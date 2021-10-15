@@ -40,7 +40,7 @@ class ImportScripts::EpicFixes < BulkImport::Base
 
   def execute
     # fix incorrect attachments
-    refresh_post_raw
+    # refresh_post_raw
     import_attachments
 
   end
@@ -83,154 +83,76 @@ class ImportScripts::EpicFixes < BulkImport::Base
     filename
   end
 
-  def find_upload(post, opts = {})
-    if opts[:attachment_id].present?
-      sql = "SELECT a.filename, fd.userid, LENGTH(fd.filedata), filedata, fd.filedataid
-               FROM #{DB_PREFIX}attach a
-               LEFT JOIN #{DB_PREFIX}filedata fd ON fd.filedataid = a.filedataid
-               LEFT JOIN #{DB_PREFIX}node n ON n.nodeid = a.nodeid
-              WHERE a.nodeid = #{opts[:attachment_id]}"
-    elsif opts[:filedata_id].present?
-      sql = "SELECT a.filename, fd.userid, LENGTH(fd.filedata), filedata, fd.filedataid
-               FROM #{DB_PREFIX}attachment a
-               LEFT JOIN #{DB_PREFIX}filedata fd ON fd.filedataid = a.filedataid
-              WHERE a.attachmentid = #{opts[:filedata_id]}"
-    end
-
-    results = mysql_query(sql)
-
-    unless row = results.first
-      puts "Couldn't find attachment record -- nodeid/filedataid = #{opts[:attachment_id] || opts[:filedata_id]} / post.id = #{post.id}"
-      return nil
-    end
-
-    attachment_id = row[4]
-    user_id = row[1]
-    db_filename = row[0]
-
-    filename = File.join(ATTACH_DIR, user_id.to_s.split('').join('/'), "#{attachment_id}.attach")
-    real_filename = db_filename
-    real_filename.prepend SecureRandom.hex if real_filename[0] == '.'
-
-    unless File.exists?(filename)
-      filename = check_database_for_attachment(row) if filename.blank?
-      return nil if filename.nil?
-    end
-
-    upload = create_upload(post.user_id, filename, real_filename)
-
-    if upload.nil? || !upload.valid?
-      puts "Upload not valid"
-      puts upload.errors.inspect if upload
-      return
-    end
-
-    [upload, real_filename]
-  rescue Mysql2::Error => e
-    puts "SQL Error"
-    puts e.message
-    puts sql
-  end
-
   def import_attachments
     puts '', 'importing missing attachments...'
 
-    # add extensions to authorized setting
-    #ext = mysql_query("SELECT GROUP_CONCAT(DISTINCT(extension)) exts FROM #{DB_PREFIX}filedata").first[0].split(',')
-    #SiteSetting.authorized_extensions = (SiteSetting.authorized_extensions.split("|") + ext).uniq.join("|")
+    total_count = 0
 
-    RateLimiter.disable
-    current_count = 0
+    PostCustomField.where(name: Post::MISSING_UPLOADS).pluck(:post_id, :value).each do |post_id, uploads|
+      post = Post.where(id: post_id)
+      raw = post.first.raw
+      new_raw = raw.dup 
 
-    total_count = Post.all.count
+      original_post_id = PostCustomField.where(name: 'import_id', post_id: post_id).pluck(:value)
 
-    success_count = 0
-    fail_count = 0
+      upload = mysql_query <<-SQL
+      SELECT n.parentid nodeid, a.filename, fd.userid, LENGTH(fd.filedata) AS dbsize, filedata, fd.filedataid
+        FROM #{DB_PREFIX}attach a
+        LEFT JOIN #{DB_PREFIX}filedata fd ON fd.filedataid = a.filedataid
+        LEFT JOIN #{DB_PREFIX}node n on n.nodeid = a.nodeid
+        WHERE n.parentid = #{original_post_id}
+      SQL
 
-    # we need to match an older and newer style for inline attachment import
-    # new style matches the nodeid in the attach table
-    # old style matches the filedataid in attach/filedata tables
-    attachment_regex = /\[attach[^\]]*\].*\"data-attachmentid\":"?(\d+)"?,?.*\[\/attach\]/i
-    attachment_regex_oldstyle = /\[attach[^\]]*\](\d+)\[\/attach\]/i
-    attachment_regex_url = /https?:\/\/forums.unrealengine.com\/filedata\/fetch\?id=(\d+)/i
+      if upload.nil?
+        puts "Upload for #{post.id} not found"
+        next
+      end
 
-    Post.where("raw LIKE '%[ATTACH%'").find_each do |post|
-      current_count += 1
-      print_status current_count, total_count
+      filename = File.join(ATTACH_DIR, upload['userid'].to_s.split('').join('/'), "#{upload['filedataid']}.attach")
+      real_filename = upload['filename']
+      real_filename.prepend SecureRandom.hex if real_filename[0] == '.'
 
-      new_raw = post.raw.dup
-
-      # look for new style attachments
-      new_raw.gsub!(attachment_regex) do |s|
-        matches = attachment_regex.match(s)
-        attachment_id = matches[1]
-
-        upload, filename = find_upload(post, { attachment_id: attachment_id })
-
-        unless upload
-          fail_count += 1
+      unless File.exists?(filename)
+        # attachments can be on filesystem or in database
+        # try to retrieve from database if the file did not exist on filesystem
+        if upload['dbsize'].to_i == 0
+          puts "Attachment file #{upload['filedataid']} doesn't exist"
           next
         end
 
-        html_for_upload(upload, filename)
+        tmpfile = 'attach_' + upload['filedataid'].to_s
+        filename = File.join('/tmp/', tmpfile)
+        File.open(filename, 'wb') { |f|
+          f.write(upload['filedata'])
+        }
+        return nil if filename.nil?
       end
 
-      # look for old style attachments
-      new_raw.gsub!(attachment_regex_oldstyle) do |s|
-        matches = attachment_regex_oldstyle.match(s)
-        filedata_id = matches[1]
+      puts "POST ID: #{post_id}"
+      puts "ORIGONAL POST ID: #{original_post_id}"
+      puts "PATH IN FILESYSTEM: #{filename}"
+      puts "FILENAME: #{real_filename}"
+      puts "POST CONTENT: #{uploads}"
 
-        upload, filename = find_upload(post, { filedata_id: filedata_id })
+      # upl_obj = create_upload(post.user_id, filename, real_filename)
 
-        unless upload
-          fail_count += 1
-          next
-        end
+      # if upl_obj&.persisted?
+      #   new_raw.gsub!(uploads) do |s|
+      #     html_for_upload(upl_obj, filename)
+      #   end
+      # else
+      #   puts "Fail"
+      #   exit
+      # end
 
-        html_for_upload(upload, filename)
-      end
+      # if new_raw != post.raw
+      #   post.raw = new_raw
+      #   post.save(validate: false)
+      # end
 
-      if new_raw != post.raw
-        post.raw = new_raw
-        post.save(validate: false)
-        success_count += 1
-      end
+      total_count += 1
     end
-
-    Post.where("raw LIKE '%https://forums.unrealengine.com/filedata/fetch%'").find_each do |post|
-      current_count += 1
-      print_status current_count, total_count
-
-      new_raw = post.raw.dup
-
-      # look for new style attachments
-      new_raw.gsub!(attachment_regex_url) do |s|
-        matches = attachment_regex_url.match(s)
-        attachment_id = matches[1]
-
-        upload, filename = find_upload(post, { attachment_id: attachment_id })
-
-        unless upload
-          fail_count += 1
-          next
-        end
-
-        html_for_upload(upload, filename)
-      end
-      if new_raw != post.raw
-        post.raw = new_raw
-        post.save(validate: false)
-        success_count += 1
-      end
-    end
-
-    puts "", "imported #{success_count} attachments... failed: #{fail_count}"
-    RateLimiter.enable
-  end
-
-
-  def permalink_exists(url)
-    Permalink.find_by(url: url)
+    puts "Total uploads porcessed succesfully: #{total_count}"
   end
 
   def preprocess_raw(text)
@@ -471,4 +393,4 @@ class ImportScripts::EpicFixes < BulkImport::Base
   end
 end
 
-ImportScripts::EpicFixes.new.run
+ImportScripts::EpicFixes.new.execute
