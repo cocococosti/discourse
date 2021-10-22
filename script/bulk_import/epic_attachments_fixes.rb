@@ -93,37 +93,47 @@ class ImportScripts::EpicFixes < BulkImport::Base
       raw = post.first.raw
       new_raw = raw.dup 
 
-      original_post_id = PostCustomField.where(name: 'import_id', post_id: post_id).pluck(:value)
+      original_post_id = PostCustomField.where(name: 'import_id', post_id: post_id).first
 
-      upload = mysql_query <<-SQL
-      SELECT n.parentid nodeid, a.filename, fd.userid, LENGTH(fd.filedata) AS dbsize, filedata, fd.filedataid
-        FROM attach a
-        LEFT JOIN filedata fd ON fd.filedataid = a.filedataid
-        LEFT JOIN node n on n.nodeid = a.nodeid
-        WHERE n.parentid = #{original_post_id}
-      SQL
-
-      if upload.nil?
-        puts "Upload for #{post.id} not found"
+      if original_post_id.nil?
+        puts "Original post not found for #{post.first.id}"
         next
       end
 
-      filename = File.join(ATTACH_DIR, upload['userid'].to_s.split('').join('/'), "#{upload['filedataid']}.attach")
-      real_filename = upload['filename']
+      original_post_id = original_post_id.value
+
+
+      uploads = mysql_query <<-SQL
+        SELECT n.parentid nodeid, a.filename, fd.userid, LENGTH(fd.filedata) AS dbsize, filedata, fd.filedataid
+          FROM attach a
+          LEFT JOIN filedata fd ON fd.filedataid = a.filedataid
+          LEFT JOIN node n on n.nodeid = a.nodeid
+          WHERE n.parentid = #{original_post_id}
+      SQL
+
+      upload = uploads.first
+
+      if upload.nil?
+        puts "Upload for #{post.first.id} not found"
+        next
+      end
+
+      filename = File.join(ATTACH_DIR, upload[2].to_s.split('').join('/'), "#{upload[5]}.attach")
+      real_filename = upload[1]
       real_filename.prepend SecureRandom.hex if real_filename[0] == '.'
 
       unless File.exists?(filename)
         # attachments can be on filesystem or in database
         # try to retrieve from database if the file did not exist on filesystem
-        if upload['dbsize'].to_i == 0
-          puts "Attachment file #{upload['filedataid']} doesn't exist"
+        if upload[3].to_i == 0
+          puts "Attachment file #{upload[5]} doesn't exist"
           next
         end
 
-        tmpfile = 'attach_' + upload['filedataid'].to_s
+        tmpfile = 'attach_' + upload[5].to_s
         filename = File.join('/tmp/', tmpfile)
         File.open(filename, 'wb') { |f|
-          f.write(upload['filedata'])
+          f.write(upload[4])
         }
         return nil if filename.nil?
       end
