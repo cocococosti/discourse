@@ -97,9 +97,9 @@ class ImportScripts::EpicFixes < BulkImport::Base
 
       upload = mysql_query <<-SQL
       SELECT n.parentid nodeid, a.filename, fd.userid, LENGTH(fd.filedata) AS dbsize, filedata, fd.filedataid
-        FROM #{DB_PREFIX}attach a
-        LEFT JOIN #{DB_PREFIX}filedata fd ON fd.filedataid = a.filedataid
-        LEFT JOIN #{DB_PREFIX}node n on n.nodeid = a.nodeid
+        FROM attach a
+        LEFT JOIN filedata fd ON fd.filedataid = a.filedataid
+        LEFT JOIN node n on n.nodeid = a.nodeid
         WHERE n.parentid = #{original_post_id}
       SQL
 
