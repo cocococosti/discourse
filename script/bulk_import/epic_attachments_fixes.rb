@@ -41,7 +41,9 @@ class ImportScripts::EpicFixes < BulkImport::Base
   def execute
     # fix incorrect attachments
     # refresh_post_raw
-    import_attachments
+    
+    #import_attachments
+    import_attachments_two
 
   end
 
@@ -83,6 +85,69 @@ class ImportScripts::EpicFixes < BulkImport::Base
     filename
   end
 
+  def import_attachments_two
+    puts '', 'importing missing attachments...'
+
+    total_count = 0
+
+    uploads = mysql_query <<-SQL
+    SELECT n.parentid nodeid, a.filename, fd.userid, LENGTH(fd.filedata) AS dbsize, filedata, fd.filedataid
+      FROM #{DB_PREFIX}attach a
+      LEFT JOIN #{DB_PREFIX}filedata fd ON fd.filedataid = a.filedataid
+      LEFT JOIN #{DB_PREFIX}node n on n.nodeid = a.nodeid
+    SQL
+
+    uploads.each do |upload|
+
+      post_id = PostCustomField.where(name: 'import_id').where(value: upload[0]).first&.post_id
+      post_id = PostCustomField.where(name: 'import_id').where(value: "thread-#{upload[0]}").first&.post_id unless post_id
+      if post_id.nil?
+        puts "Post for #{upload[0]} not found"
+        next
+      end
+      
+      missing = PostCustomField.where(post_id: post_id).where(name: Post::MISSING_UPLOADS)
+      if missing.nil? || missing.empty?
+        next
+      end
+
+      begin
+          post = Post.find(post_id)
+      rescue
+          puts "Couldn't find post #{post_id}"
+          next
+      end
+
+      filename = File.join(ATTACH_DIR, upload[2].to_s.split('').join('/'), "#{upload[5]}.attach")
+      real_filename = upload[1]
+      real_filename.prepend SecureRandom.hex if real_filename[0] == '.'
+
+      unless File.exists?(filename)
+        # attachments can be on filesystem or in database
+        # try to retrieve from database if the file did not exist on filesystem
+        if upload[3].to_i == 0
+          puts "Attachment file #{upload[5]} doesn't exist"
+          next
+        end
+
+        tmpfile = 'attach_' + upload[5].to_s
+        filename = File.join('/tmp/', tmpfile)
+        File.open(filename, 'wb') { |f|
+          f.write(upload[4])
+        }
+        return nil if filename.nil?
+      end
+
+      puts "POST ID: #{post_id}"
+      puts "PATH IN FILESYSTEM: #{filename}"
+      puts "FILENAME: #{real_filename}"
+
+      total_count += 1
+
+    end
+    puts "Total uploads porcessed succesfully: #{total_count}"
+  end
+
   def import_attachments
     puts '', 'importing missing attachments...'
 
@@ -113,7 +178,7 @@ class ImportScripts::EpicFixes < BulkImport::Base
 
       upload = uploads.first
 
-      if upload.nil?
+      if upload.nil? || upload.empty?
         puts "Upload for #{post.first.id} not found"
         next
       end
