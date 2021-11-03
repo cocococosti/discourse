@@ -93,10 +93,9 @@ class ImportScripts::EpicFixes < BulkImport::Base
       return nil if filename.nil?
     end
 
-    #upload = create_upload(post.user_id, filename, real_filename)
-    upload = {}
+    upload = create_upload(post.user_id, filename, real_filename)
 
-    if upload.nil? #|| !upload.valid?
+    if upload.nil? || !upload.valid?
       puts "Upload not valid"
       puts upload.errors.inspect if upload
       return
@@ -214,7 +213,6 @@ class ImportScripts::EpicFixes < BulkImport::Base
         # not all images in the original post are missing in the migrated ones
         if is_missing(raw, missing_uploads_counter, uploads_counter, uploads)
           puts "The upload to substitute is #{uploads[missing_uploads_counter]}"
-          missing_uploads_counter += 1
           
           upload, filename = find_upload(post, { node_id: node_id })
 
@@ -223,6 +221,7 @@ class ImportScripts::EpicFixes < BulkImport::Base
 
           unless upload
             fail_count += 1
+            missing_uploads_counter += 1
             puts "Upload recovery for post #{post_id} failed, upload id: #{node_id}"
             puts "Original upload: #{s}"
             puts "----------------------------------------------------------------------"
@@ -230,10 +229,10 @@ class ImportScripts::EpicFixes < BulkImport::Base
           end
           
           puts "----------------------------------------------------------------------"
-          # html = html_for_upload(upload, filename)
-          # puts "The HTML to substitute is #{html}"
-          # new_raw[uploads[missing_uploads_counter]] = html
-          success_count += 1
+          html = html_for_upload(upload, filename)
+          puts "The HTML to substitute is #{html}"
+          new_raw.gsub! /!\[[^\]]+\]\(#{uploads[missing_uploads_counter]}\)/, html
+          missing_uploads_counter += 1
         else
           puts "It's not a missing upload. Skipping."
           puts "----------------------------------------------------------------------"
@@ -255,7 +254,6 @@ class ImportScripts::EpicFixes < BulkImport::Base
 
         if is_missing(raw, missing_uploads_counter, uploads_counter, uploads)
           puts "The upload to substitute is #{uploads[missing_uploads_counter]}"
-          missing_uploads_counter += 1
 
           upload, filename = find_upload(post, { attachment_id: attachment_id })
 
@@ -264,6 +262,7 @@ class ImportScripts::EpicFixes < BulkImport::Base
 
           unless upload
             fail_count += 1
+            missing_uploads_counter += 1
             puts "Upload recovery for post #{post_id} failed, upload id: #{attachment_id}"
             puts "Original upload: #{s}"
             puts "----------------------------------------------------------------------"
@@ -271,10 +270,10 @@ class ImportScripts::EpicFixes < BulkImport::Base
           end
 
           puts "----------------------------------------------------------------------"
-          # html = html_for_upload(upload, filename)
-          # puts "The HTML to substitute is #{html}"
-          # new_raw[uploads[missing_uploads_counter]] = html
-          success_count += 1
+          html = html_for_upload(upload, filename)
+          puts "The HTML to substitute is #{html}"
+          new_raw.gsub! /!\[[^\]]+\]\(#{uploads[missing_uploads_counter]}\)/, html
+          missing_uploads_counter += 1
         else
           puts "It's not a missing upload. Skipping."
           puts "----------------------------------------------------------------------"
@@ -282,12 +281,12 @@ class ImportScripts::EpicFixes < BulkImport::Base
         end
       end
 
-      # if new_raw != raw
-      #   post['raw'] = new_raw
-      #   post.save(validate: false)
-      #   PostCustomField.create(post_id: post.id, name: "upload_fixed", value: true)
-      #   success_count += 1
-      # end
+      if new_raw != raw
+        post['raw'] = new_raw
+        post.save(validate: false)
+        PostCustomField.create(post_id: post.id, name: "upload_fixed", value: true)
+        success_count += 1
+      end
     end
 
     puts "", "imported #{success_count} attachments... failed: #{fail_count}"
