@@ -9,8 +9,8 @@ class ImportScripts::Yafnet < ImportScripts::Base
     super
 
     @client = TinyTds::Client.new(
-      host: ENV["DB_HOST"] || "0.0.0.0:1433",
-      username: ENV["DB_USERNAME"] || "",
+      dataserver: ENV["DB_HOST"] || "172.17.0.2",
+      username: ENV["DB_USERNAME"] || "SA",
       password: ENV["DB_PASSWORD"] || "",
       database: ENV["DB_NAME"] || "",
       timeout: 60 # the user query is very slow
