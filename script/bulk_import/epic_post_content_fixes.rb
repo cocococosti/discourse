@@ -41,51 +41,59 @@ class ImportScripts::EpicFixes < BulkImport::Base
   end
 
   def execute
-
     refresh_post_raw
-
   end
 
   def refresh_post_raw
-    posts_with_issues = mysql_query <<-SQL
-      SELECT n.nodeid, rawtext
-        FROM #{DB_PREFIX}node n
-        LEFT JOIN #{DB_PREFIX}text txt ON txt.nodeid = n.nodeid
-       WHERE rawtext LIKE '%[FONT="courier new"]%' OR
-       rawtext LIKE '%[LIST%' OR 
-       rawtext REGEXP '.* \*\*'
-    SQL
+    skipped = 0
+    updated = 0
+    total = 0
+    
+    broken = Post.where("cooked like '%[LIST]%' or cooked like '%[LIST=1]%' or cooked like '%[/LIST]%' or cooked like '%[/ol]%' or cooked like '%[/li]%' or cooked like '%[/ul]%'")
 
-    posts_with_issues.each do |post|
+    broken.each do |post|
+      total += 1
 
-      imported_post = Post.find(post_id_from_imported_post_id(post[0]))
-
-      # Check here if the post was updated after the migration
+      # Check if the post was updated after the migration
       migration_end_date = "2021-05-15"
-      if imported_post.updated_at > migration_end_date.to_date
-        puts "Post has been update since the migration ended"
+      if post.updated_at > migration_end_date.to_date
+        puts "Post #{post.id} has been update since the migration ended. Skipping."
+        skipped += 1
         next
       end
 
-      # process raw text
-      new_raw = post[1]
-      new_raw = preprocess_raw(new_raw)
+      import_id = PostCustomField.where(name: 'import_id', post_id: post.id).first.pluck(:value)
 
-      # add a post revision
+      original_raw = mysql_query <<-SQL
+      SELECT rawtext
+        FROM text
+        WHERE nodeid = #{import_id}
+      SQL
+
+      # Process raw text
+      new_raw = process_raw(original_raw)
+
+      # Update post
       if DRY_RUN
+        puts "Updated (dry-run) post: #{post.id}"
         puts new_raw
         puts "--------------"
+        updated += 1
       else
-        PostRevisor.new(imported_post).revise!(Discourse.system_user, { raw: new_raw }, bypass_bump: true, edit_reason: "Refresh post raw to fix parsing issues")
+        PostRevisor.new(post).revise!(Discourse.system_user, { raw: new_raw }, bypass_bump: true, edit_reason: "Refresh post raw to fix parsing issues")
+        puts "Updated post: #{post.id}"
+        puts new_raw
+        puts "--------------"
+        updated += 1
       end
-
-      # reset attachment import field
-      #imported_post.custom_fields[:import_attachments] = false
-      #imported_post.save!
     end
+
+    puts "Posts updated: #{updated}"
+    puts "Posts skipped: #{skipped}"
+    puts "Total: #{total}"
   end
 
-  def preprocess_raw(text)
+  def process_raw(text)
     return "" if text.nil?
     raw = text.dup
     raw = normalize_text(raw)
@@ -314,10 +322,10 @@ class ImportScripts::EpicFixes < BulkImport::Base
     # convert list tags to ul and list=1 tags to ol
     # (basically, we're only missing list=a here...)
     # (https://meta.discourse.org/t/phpbb-3-importer-old/17397)
-    raw.gsub!(/\[list\](.*?)\[\/list\]/im, '[ul]\1[/ul]')
-    raw.gsub!(/\[list=1\|?[^\]]*\](.*?)\[\/list\]/im, '[ol]\1[/ol]')
-    raw.gsub!(/\[list\](.*?)\[\/list:u\]/im, '[ul]\1[/ul]')
-    raw.gsub!(/\[list=1\|?[^\]]*\](.*?)\[\/list:o\]/im, '[ol]\1[/ol]')
+    raw.gsub!(/\[list\](.*?)\[\/list\]/i, '[ul]\1[/ul]')
+    raw.gsub!(/\[list=1\|?[^\]]*\](.*?)\[\/list\]/i, '[ol]\1[/ol]')
+    raw.gsub!(/\[list\](.*?)\[\/list:u\]/i, '[ul]\1[/ul]')
+    raw.gsub!(/\[list=1\|?[^\]]*\](.*?)\[\/list:o\]/i, '[ol]\1[/ol]')
     # convert *-tags to li-tags so bbcode-to-md can do its magic on phpBB's lists:
     raw.gsub!(/\[\*\]\n/, '')
     raw.gsub!(/\[\*\](.*?)\[\/\*:m\]/, '[li]\1[/li]')
