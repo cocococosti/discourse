@@ -17,8 +17,8 @@ class ImportScripts::EpicFixes < BulkImport::Base
 
     host     = ENV["DB_HOST"] || "localhost"
     username = ENV["DB_USERNAME"] || "root"
-    password = ENV["DB_PASSWORD"]
-    database = ENV["DB_NAME"] || "vbulletin"
+    password = ENV["DB_PASSWORD"] || "root"
+    database = ENV["DB_NAME"] || "vb_web_pd04"
     charset  = ENV["DB_CHARSET"] || "utf8"
 
     @html_entities = HTMLEntities.new
@@ -45,11 +45,12 @@ class ImportScripts::EpicFixes < BulkImport::Base
   end
 
   def refresh_post_raw
+    puts "Fixing posts content..."
     skipped = 0
     updated = 0
     total = 0
     
-    broken = Post.where("cooked like '%[LIST]%' or cooked like '%[LIST=1]%' or cooked like '%[/LIST]%' or cooked like '%[/ol]%' or cooked like '%[/li]%' or cooked like '%[/ul]%'")
+    broken = Post.where("cooked like '%[LIST]%' or cooked like '%[LIST=1]%' or cooked like '%[/LIST]%' or cooked like '%[list]%' or cooked like '%[list=1]%' or cooked like '%[/list]%' or cooked like '%[/ol]%' or cooked like '%[/li]%' or cooked like '%[/ul]%' or cooked like '%[ol]%' or cooked like '%[li]%' or cooked like '%[ul]%'")
 
     broken.each do |post|
       total += 1
@@ -62,16 +63,24 @@ class ImportScripts::EpicFixes < BulkImport::Base
         next
       end
 
-      import_id = PostCustomField.where(name: 'import_id', post_id: post.id).first.pluck(:value)
+      import_id = PostCustomField.where(name: 'import_id', post_id: post.id).first.value
 
       original_raw = mysql_query <<-SQL
       SELECT rawtext
         FROM text
-        WHERE nodeid = #{import_id}
+        WHERE nodeid = #{import_id.to_i}
       SQL
 
+      original_raw = original_raw.first
+
+      if original_raw.nil?
+        puts "Original content not found for post #{post.id}. Skipping."
+        skipped += 1
+        next
+      end
+
       # Process raw text
-      new_raw = process_raw(original_raw)
+      new_raw = process_raw(original_raw[0])
 
       # Update post
       if DRY_RUN
@@ -322,14 +331,19 @@ class ImportScripts::EpicFixes < BulkImport::Base
     # convert list tags to ul and list=1 tags to ol
     # (basically, we're only missing list=a here...)
     # (https://meta.discourse.org/t/phpbb-3-importer-old/17397)
-    raw.gsub!(/\[list\](.*?)\[\/list\]/i, '[ul]\1[/ul]')
-    raw.gsub!(/\[list=1\|?[^\]]*\](.*?)\[\/list\]/i, '[ol]\1[/ol]')
-    raw.gsub!(/\[list\](.*?)\[\/list:u\]/i, '[ul]\1[/ul]')
-    raw.gsub!(/\[list=1\|?[^\]]*\](.*?)\[\/list:o\]/i, '[ol]\1[/ol]')
+    # raw.gsub!(/\[list\](.*?)\[\/list\]/i, '[ul]\1[/ul]')
+    # raw.gsub!(/\[list=1\|?[^\]]*\](.*?)\[\/list\]/i, '[ol]\1[/ol]')
+    # raw.gsub!(/\[list\](.*?)\[\/list:u\]/i, '[ul]\1[/ul]')
+    # raw.gsub!(/\[list=1\|?[^\]]*\](.*?)\[\/list:o\]/i, '[ol]\1[/ol]')
+    raw.gsub!(/\[list\]/i, "\n\n<ul>\n\n")
+    raw.gsub!(/\[list=1\|?[^\]]*\]/i, "\n\n<ul>\n\n")
+    raw.gsub!(/\[\/list\]/i, "\n\n</ul>\n\n")
+    raw.gsub!(/\[\/list:u\]/i, "\n\n</ul>\n\n")
+    raw.gsub!(/\[\/list:o\]/i, "\n\n</ul>\n\n")
     # convert *-tags to li-tags so bbcode-to-md can do its magic on phpBB's lists:
     raw.gsub!(/\[\*\]\n/, '')
-    raw.gsub!(/\[\*\](.*?)\[\/\*:m\]/, '[li]\1[/li]')
-    raw.gsub!(/\[\*\](.*?)\n/, '[li]\1[/li]')
+    raw.gsub!(/\[\*\](.*?)\[\/\*:m\]/, "\n\n<li>\n\n#{$1}\n\n</li>\n\n")
+    raw.gsub!(/\[\*\](.*?)\n/, "\n\n<li>\n\n#{$1}\n\n<li>\n\n")
     raw.gsub!(/\[\*=1\]/, '')
 
     raw
