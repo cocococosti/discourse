@@ -44,6 +44,79 @@ class ImportScripts::EpicFixes < BulkImport::Base
     refresh_post_raw
   end
 
+  # find the uploaded file information from the db
+  def find_upload(post, attachment_id)
+    sql = "SELECT a.attachmentid attachment_id, a.userid user_id, a.filename filename,
+                  a.filedata filedata, a.extension extension
+             FROM attachment a
+            WHERE a.attachmentid = #{attachment_id}"
+    results = mysql_query(sql)
+
+    unless row = results.first
+      puts "Couldn't find attachment record for attachment_id = #{attachment_id} post.id = #{post.id}"
+      return
+    end
+
+    attachment_id = row[0]
+    user_id = row[1]
+    db_filename = row[2]
+
+    filename = File.join(ATTACHMENT_DIR, user_id.to_s.split('').join('/'), "#{attachment_id}.attach")
+    real_filename = db_filename
+    real_filename.prepend SecureRandom.hex if real_filename[0] == '.'
+
+    unless File.exist?(filename)
+      puts "Attachment file #{row.inspect} doesn't exist"
+      return nil
+    end
+
+    upload = create_upload(post.user.id, filename, real_filename)
+
+    if upload.nil? || !upload.valid?
+      puts "Upload not valid :("
+      puts upload.errors.inspect if upload
+      return
+    end
+
+    [upload, real_filename]
+  rescue Mysql2::Error => e
+    puts "SQL Error"
+    puts e.message
+    puts sql
+  end
+
+  def import_attachments post_id
+    puts "Importing attachments for #{post_id}"
+
+    RateLimiter.disable
+
+    attachment_regex = /\[attach[^\]]*\](\d+)\[\/attach\]/i
+
+    post = Post.find(post_id)
+
+    new_raw = post.raw.dup
+    new_raw.gsub!(attachment_regex) do |s|
+      matches = attachment_regex.match(s)
+      attachment_id = matches[1]
+
+      upload, filename = find_upload(post, attachment_id)
+      unless upload
+        puts "Attachments import for #{post_id} failed"
+        next
+      end
+
+      html_for_upload(upload, filename)
+    end
+
+    if new_raw != post.raw
+      puts "The new raw (with attachments) is #{new_raw}"
+      PostRevisor.new(post).revise!(post.user, { raw: new_raw }, bypass_bump: true, edit_reason: 'Post content fix: Import attachments')
+    end
+
+    puts "Attachements import successful for #{post_id}"
+    RateLimiter.enable
+  end
+
   def refresh_post_raw
     puts "Fixing posts content..."
     skipped = 0
@@ -95,6 +168,8 @@ class ImportScripts::EpicFixes < BulkImport::Base
         puts "--------------"
         updated += 1
       end
+
+      import_attachments post.id
     end
 
     puts "Posts updated: #{updated}"
@@ -341,9 +416,13 @@ class ImportScripts::EpicFixes < BulkImport::Base
     raw.gsub!(/\[\/list:u\]/i, "\n\n</ul>\n\n")
     raw.gsub!(/\[\/list:o\]/i, "\n\n</ul>\n\n")
     # convert *-tags to li-tags so bbcode-to-md can do its magic on phpBB's lists:
+    # raw.gsub!(/\[\*\]\n/, '')
+    # raw.gsub!(/\[\*\](.*?)\[\/\*:m\]/, "\n\n<li>\n\n#{$1}\n\n</li>\n\n")
+    # raw.gsub!(/\[\*\](.*?)\n/, "\n\n<li>\n\n#{$1}\n\n<li>\n\n")
+    # raw.gsub!(/\[\*=1\]/, '')
     raw.gsub!(/\[\*\]\n/, '')
-    raw.gsub!(/\[\*\](.*?)\[\/\*:m\]/, "\n\n<li>\n\n#{$1}\n\n</li>\n\n")
-    raw.gsub!(/\[\*\](.*?)\n/, "\n\n<li>\n\n#{$1}\n\n<li>\n\n")
+    raw.gsub!(/\[\*\](.*?)\[\/\*:m\]/, '<li>\n\n\1\n\n</li>')
+    raw.gsub!(/\[\*\](.*?)\n/, '<li>\n\n\1\n\n</li>')
     raw.gsub!(/\[\*=1\]/, '')
 
     raw
