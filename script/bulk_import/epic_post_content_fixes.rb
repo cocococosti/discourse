@@ -109,8 +109,14 @@ class ImportScripts::EpicFixes < BulkImport::Base
     end
 
     if new_raw != post.raw
-      puts "The new raw (with attachments) is #{new_raw}"
-      PostRevisor.new(post).revise!(post.user, { raw: new_raw }, bypass_bump: true, edit_reason: 'Post content fix: Import attachments')
+      if DRY_RUN
+        puts "The new raw (with attachments) is (DRY_RUN):"
+        puts new_raw
+      else
+        puts "The new raw (with attachments) is:"
+        puts new_raw
+        PostRevisor.new(post).revise!(post.user, { raw: new_raw }, bypass_bump: true, edit_reason: 'Post content fix: Import attachments')
+      end
     end
 
     puts "Attachements import successful for #{post_id}"
@@ -159,17 +165,17 @@ class ImportScripts::EpicFixes < BulkImport::Base
       if DRY_RUN
         puts "Updated (dry-run) post: #{post.id}"
         puts new_raw
+        import_attachments post.id
         puts "--------------"
         updated += 1
       else
         PostRevisor.new(post).revise!(Discourse.system_user, { raw: new_raw }, bypass_bump: true, edit_reason: "Refresh post raw to fix parsing issues")
+        import_attachments post.id
         puts "Updated post: #{post.id}"
         puts new_raw
         puts "--------------"
         updated += 1
       end
-
-      import_attachments post.id
     end
 
     puts "Posts updated: #{updated}"
@@ -255,8 +261,6 @@ class ImportScripts::EpicFixes < BulkImport::Base
     raw.gsub!(/\*\*( )+(.*)( )+\*\*/im) { "**#{$2}**" }
     raw.gsub!(/\*\*(.*)( )+\*\*/im) { "**#{$1}**" }
     raw.gsub!(/\*\*( )+(.*)\*\*/im) { "**#{$2}**" }
-
-    # Nested lists
 
     # @[URL=<user_profile>]<username>[/URL]
     # [USER=id]username[/USER]
@@ -410,20 +414,32 @@ class ImportScripts::EpicFixes < BulkImport::Base
     # raw.gsub!(/\[list=1\|?[^\]]*\](.*?)\[\/list\]/i, '[ol]\1[/ol]')
     # raw.gsub!(/\[list\](.*?)\[\/list:u\]/i, '[ul]\1[/ul]')
     # raw.gsub!(/\[list=1\|?[^\]]*\](.*?)\[\/list:o\]/i, '[ol]\1[/ol]')
+    # convert *-tags to li-tags so bbcode-to-md can do its magic on phpBB's lists:
+    # raw.gsub!(/\[\*\]\n/, '')
+    # raw.gsub!(/\[\*\](.*?)\[\/\*:m\]/, "<li>\n\n#{$1}\n\n</li>")
+    # raw.gsub!(/\[\*\](.*?)\n/, "<li>\n\n#{$1}\n\n<li>")
+    # raw.gsub!(/\[\*=1\]/, '')
+    # raw.gsub!(/\[\*\]\n/, '')
+    # raw.gsub!(/\[\*\](.*?)\[\/\*:m\]/, '<li>\1</li>')
+    # raw.gsub!(/\[\*\](.*?)\n/, '<li>\1</li>')
+    # raw.gsub!(/\[\*=1\]/, '')
+
+    # Nested lists
+    
+    raw.gsub!(/\[\*\]\n/, '')
+    raw.gsub!(/\[\*\](.*?)\[\/\*:m\]/i) do
+      "<li>\n\n#{$1}\n\n</li>"
+    end
+    raw.gsub!(/\[\*\](((?!\[\*\]$|\[list\]$|\[\/list\]$).*))/i) do
+      "<li>\n\n#{$2}\n\n</li>"
+    end
+    raw.gsub!(/\[\*=1\]/, '')
+
     raw.gsub!(/\[list\]/i, "\n\n<ul>\n\n")
     raw.gsub!(/\[list=1\|?[^\]]*\]/i, "\n\n<ul>\n\n")
     raw.gsub!(/\[\/list\]/i, "\n\n</ul>\n\n")
     raw.gsub!(/\[\/list:u\]/i, "\n\n</ul>\n\n")
     raw.gsub!(/\[\/list:o\]/i, "\n\n</ul>\n\n")
-    # convert *-tags to li-tags so bbcode-to-md can do its magic on phpBB's lists:
-    # raw.gsub!(/\[\*\]\n/, '')
-    # raw.gsub!(/\[\*\](.*?)\[\/\*:m\]/, "\n\n<li>\n\n#{$1}\n\n</li>\n\n")
-    # raw.gsub!(/\[\*\](.*?)\n/, "\n\n<li>\n\n#{$1}\n\n<li>\n\n")
-    # raw.gsub!(/\[\*=1\]/, '')
-    raw.gsub!(/\[\*\]\n/, '')
-    raw.gsub!(/\[\*\](.*?)\[\/\*:m\]/, '<li>\n\n\1\n\n</li>')
-    raw.gsub!(/\[\*\](.*?)\n/, '<li>\n\n\1\n\n</li>')
-    raw.gsub!(/\[\*=1\]/, '')
 
     raw
   end
