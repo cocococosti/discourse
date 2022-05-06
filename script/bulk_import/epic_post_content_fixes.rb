@@ -44,10 +44,72 @@ class ImportScripts::EpicFixes < BulkImport::Base
     refresh_post_raw
   end
 
-  def import_attachments(post_id, uploads)
+  def check_database_for_attachment(row)
+    # check if attachment resides in the database & try to retrieve
+    if row[2].to_i == 0
+      puts "Attachment file #{row.inspect} doesn't exist"
+      return nil
+    end
+
+    tmpfile = 'attach_' + row[4].to_s
+    filename = File.join('/tmp/', tmpfile)
+    File.open(filename, 'wb') { |f| f.write(row[3]) }
+    filename
+  end
+
+  def find_upload(post, opts = {})
+    if opts[:attachment_id].present?
+      sql = "SELECT a.filename, fd.userid, LENGTH(fd.filedata), filedata, fd.filedataid
+               FROM #{DB_PREFIX}attach a
+               LEFT JOIN #{DB_PREFIX}filedata fd ON fd.filedataid = a.filedataid
+               LEFT JOIN #{DB_PREFIX}node n ON n.nodeid = a.nodeid
+              WHERE a.nodeid = #{opts[:attachment_id]}"
+    elsif opts[:filedata_id].present?
+      sql = "SELECT a.filename, fd.userid, LENGTH(fd.filedata), filedata, fd.filedataid
+               FROM #{DB_PREFIX}attachment a
+               LEFT JOIN #{DB_PREFIX}filedata fd ON fd.filedataid = a.filedataid
+              WHERE a.attachmentid = #{opts[:filedata_id]}"
+    end
+
+    results = mysql_query(sql)
+
+    unless row = results.first
+      puts "Couldn't find attachment record -- nodeid/filedataid = #{opts[:attachment_id] || opts[:filedata_id]} / post.id = #{post.id}"
+      return nil
+    end
+
+    attachment_id = row[4]
+    user_id = row[1]
+    db_filename = row[0]
+
+    filename = File.join(ATTACH_DIR, user_id.to_s.split('').join('/'), "#{attachment_id}.attach")
+    real_filename = db_filename
+    real_filename.prepend SecureRandom.hex if real_filename[0] == '.'
+
+    unless File.exists?(filename)
+      filename = check_database_for_attachment(row) if filename.blank?
+      return nil if filename.nil?
+    end
+
+    upload = create_upload(post.user_id, filename, real_filename)
+
+    if upload.nil? || !upload.valid?
+      puts "Upload not valid"
+      puts upload.errors.inspect if upload
+      return
+    end
+
+    [upload, real_filename]
+  rescue Mysql2::Error => e
+    puts "SQL Error"
+    puts e.message
+    puts sql
+  end
+
+  def import_attachments post_id
     puts '', 'importing attachments...'
 
-    counter = 0
+    RateLimiter.disable
 
     # we need to match an older and newer style for inline attachment import
     # new style matches the nodeid in the attach table
@@ -55,21 +117,55 @@ class ImportScripts::EpicFixes < BulkImport::Base
     attachment_regex = /\[attach[^\]]*\].*\"data-attachmentid\":"?(\d+)"?,?.*\[\/attach\]/i
     attachment_regex_oldstyle = /\[attach[^\]]*\](\d+)\[\/attach\]/i
     attachment_regex_url = /https?:\/\/forums.unrealengine.com\/filedata\/fetch\?id=(\d+)/i
-    attachment_regex_url_oldstyle = /https?:\/\/forums.unrealengine.com\/attachment/i
-    full_regex = /(\[attach[^\]]*\].*\"data-attachmentid\":"?(\d+)"?,?.*\[\/attach\])|(\[attach[^\]]*\](\d+)\[\/attach\])|(https?:\/\/forums.unrealengine.com\/filedata\/fetch\?id=(\d+))|(https?:\/\/forums.unrealengine.com\/attachment)/i
+    attachment_regex_url = /https?:\/\/forums.unrealengine.com\/attachment\.php\?attachmentid=(\d+)/i
 
     post = Post.find(post_id)
- 
+
     new_raw = post.raw.dup
 
     # look for new style attachments
-    new_raw.gsub!(attachment_regex_oldstyle) do |s|
-      if counter >= uploads.length
-        puts "ERROR: Upload not found"
-        s
+    new_raw.gsub!(attachment_regex) do |s|
+      matches = attachment_regex.match(s)
+      attachment_id = matches[1]
+
+      upload, filename = find_upload(post, { attachment_id: attachment_id })
+
+      unless upload
+        puts "Attachments import for #{post_id} failed"
+        next
       end
-      uploads[counter]
-      counter += 1
+
+      html_for_upload(upload, filename)
+    end
+
+    # look for old style attachments
+    new_raw.gsub!(attachment_regex_oldstyle) do |s|
+      matches = attachment_regex_oldstyle.match(s)
+      filedata_id = matches[1]
+
+      upload, filename = find_upload(post, { filedata_id: filedata_id })
+
+      unless upload
+        puts "Attachments import for #{post_id} failed"
+        next
+      end
+
+      html_for_upload(upload, filename)
+    end
+
+    # look for URL style attachments
+    new_raw.gsub!(attachment_regex_url) do |s|
+      matches = attachment_regex_url.match(s)
+      attachment_id = matches[1]
+
+      upload, filename = find_upload(post, { attachment_id: attachment_id })
+
+      unless upload
+        puts "Attachments import for #{post_id} failed"
+        next
+      end
+
+      html_for_upload(upload, filename)
     end
 
     if new_raw != post.raw
@@ -84,6 +180,7 @@ class ImportScripts::EpicFixes < BulkImport::Base
     end
 
     puts "Attachements import successful for #{post_id}"
+    RateLimiter.enable
   end
 
   def refresh_post_raw
@@ -103,15 +200,6 @@ class ImportScripts::EpicFixes < BulkImport::Base
         puts "Post #{post.id} has been update since the migration ended. Skipping."
         skipped += 1
         next
-      end
-
-      regex = /(\(upload:\/\/[^)]+\))/i
-      text = post.raw
-      uploads = []
-      text.gsub!(regex) do |s|
-        matches = regex.match(s)
-        upload = matches[1]
-        uploads.append(upload)
       end
 
       import_id = PostCustomField.where(name: 'import_id', post_id: post.id).first.value
@@ -136,15 +224,15 @@ class ImportScripts::EpicFixes < BulkImport::Base
       # Update post
       if DRY_RUN
         puts "Updated (dry-run) post: #{post.id}"
-        #puts new_raw
-        import_attachments(post.id, uploads)
+        puts new_raw
+        import_attachments post.id
         puts "--------------"
         updated += 1
       else
         PostRevisor.new(post).revise!(Discourse.system_user, { raw: new_raw }, bypass_bump: true, edit_reason: "Refresh post raw to fix parsing issues")
-        import_attachments(post.id, uploads)
+        import_attachments post.id
         puts "Updated post: #{post.id}"
-        #puts new_raw
+        puts new_raw
         puts "--------------"
         updated += 1
       end
