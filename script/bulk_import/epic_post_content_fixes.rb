@@ -44,68 +44,32 @@ class ImportScripts::EpicFixes < BulkImport::Base
     refresh_post_raw
   end
 
-  # find the uploaded file information from the db
-  def find_upload(post, attachment_id)
-    sql = "SELECT a.attachmentid attachment_id, a.userid user_id, a.filename filename,
-                  a.filedata filedata, a.extension extension
-             FROM attachment a
-            WHERE a.attachmentid = #{attachment_id}"
-    results = mysql_query(sql)
+  def import_attachments(post_id, uploads)
+    puts '', 'importing attachments...'
 
-    unless row = results.first
-      puts "Couldn't find attachment record for attachment_id = #{attachment_id} post.id = #{post.id}"
-      return
-    end
+    counter = 0
 
-    attachment_id = row[0]
-    user_id = row[1]
-    db_filename = row[2]
-
-    filename = File.join(ATTACHMENT_DIR, user_id.to_s.split('').join('/'), "#{attachment_id}.attach")
-    real_filename = db_filename
-    real_filename.prepend SecureRandom.hex if real_filename[0] == '.'
-
-    unless File.exist?(filename)
-      puts "Attachment file #{row.inspect} doesn't exist"
-      return nil
-    end
-
-    upload = create_upload(post.user.id, filename, real_filename)
-
-    if upload.nil? || !upload.valid?
-      puts "Upload not valid :("
-      puts upload.errors.inspect if upload
-      return
-    end
-
-    [upload, real_filename]
-  rescue Mysql2::Error => e
-    puts "SQL Error"
-    puts e.message
-    puts sql
-  end
-
-  def import_attachments post_id
-    puts "Importing attachments for #{post_id}"
-
-    RateLimiter.disable
-
-    attachment_regex = /\[attach[^\]]*\](\d+)\[\/attach\]/i
+    # we need to match an older and newer style for inline attachment import
+    # new style matches the nodeid in the attach table
+    # old style matches the filedataid in attach/filedata tables
+    attachment_regex = /\[attach[^\]]*\].*\"data-attachmentid\":"?(\d+)"?,?.*\[\/attach\]/i
+    attachment_regex_oldstyle = /\[attach[^\]]*\](\d+)\[\/attach\]/i
+    attachment_regex_url = /https?:\/\/forums.unrealengine.com\/filedata\/fetch\?id=(\d+)/i
+    attachment_regex_url_oldstyle = /https?:\/\/forums.unrealengine.com\/attachment/i
+    full_regex = /(\[attach[^\]]*\].*\"data-attachmentid\":"?(\d+)"?,?.*\[\/attach\])|(\[attach[^\]]*\](\d+)\[\/attach\])|(https?:\/\/forums.unrealengine.com\/filedata\/fetch\?id=(\d+))|(https?:\/\/forums.unrealengine.com\/attachment)/i
 
     post = Post.find(post_id)
-
+ 
     new_raw = post.raw.dup
-    new_raw.gsub!(attachment_regex) do |s|
-      matches = attachment_regex.match(s)
-      attachment_id = matches[1]
 
-      upload, filename = find_upload(post, attachment_id)
-      unless upload
-        puts "Attachments import for #{post_id} failed"
-        next
+    # look for new style attachments
+    new_raw.gsub!(attachment_regex_oldstyle) do |s|
+      if counter >= uploads.length
+        puts "ERROR: Upload not found"
+        s
       end
-
-      html_for_upload(upload, filename)
+      uploads[counter]
+      counter += 1
     end
 
     if new_raw != post.raw
@@ -120,7 +84,6 @@ class ImportScripts::EpicFixes < BulkImport::Base
     end
 
     puts "Attachements import successful for #{post_id}"
-    RateLimiter.enable
   end
 
   def refresh_post_raw
@@ -140,6 +103,15 @@ class ImportScripts::EpicFixes < BulkImport::Base
         puts "Post #{post.id} has been update since the migration ended. Skipping."
         skipped += 1
         next
+      end
+
+      regex = /(\(upload:\/\/[^)]+\))/i
+      text = post.raw
+      uploads = []
+      text.gsub!(regex) do |s|
+        matches = regex.match(s)
+        upload = matches[1]
+        uploads.append(upload)
       end
 
       import_id = PostCustomField.where(name: 'import_id', post_id: post.id).first.value
@@ -164,15 +136,15 @@ class ImportScripts::EpicFixes < BulkImport::Base
       # Update post
       if DRY_RUN
         puts "Updated (dry-run) post: #{post.id}"
-        puts new_raw
-        import_attachments post.id
+        #puts new_raw
+        import_attachments(post.id, uploads)
         puts "--------------"
         updated += 1
       else
         PostRevisor.new(post).revise!(Discourse.system_user, { raw: new_raw }, bypass_bump: true, edit_reason: "Refresh post raw to fix parsing issues")
-        import_attachments post.id
+        import_attachments(post.id, uploads)
         puts "Updated post: #{post.id}"
-        puts new_raw
+        #puts new_raw
         puts "--------------"
         updated += 1
       end
@@ -270,7 +242,9 @@ class ImportScripts::EpicFixes < BulkImport::Base
     raw.gsub!(/\[MENTION=\d+\]([\S]+)\[\/MENTION\]/i) { "@#{$1.gsub(" ", "_")}" }
 
     # [IMG2=JSON]{..."src":"<url>"}[/IMG2]
-    raw.gsub!(/\[img2[^\]]*\].*\"src\":\"?([\w\\\/:\.\-;%]*)\"?}.*\[\/img2\]/i) { "\n#{CGI::unescape($1)}\n" }
+    raw.gsub!(/\[img2[^\]]*\]{.*(\\)*\"src(\\)*\":(\\)*\"?([\w\\\/:\.\-;%\?\=\&]*)(\\)*\"?}.*\[\/img2\]/i) do
+      "\n#{CGI::unescape($4)}\n"
+    end
 
     # [TABLE]...[/TABLE]
     raw.gsub!(/\[TABLE=\\"[\w:\-\s,]+\\"\]/i, "")
