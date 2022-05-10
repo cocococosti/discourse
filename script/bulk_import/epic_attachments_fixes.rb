@@ -40,10 +40,7 @@ class ImportScripts::EpicFixes < BulkImport::Base
   end
 
   def execute
-    #import_attachments
-    #import_attachments_two
-    import_attachments_three
-
+    import_attachments
   end
 
   def check_database_for_attachment(row)
@@ -101,7 +98,7 @@ class ImportScripts::EpicFixes < BulkImport::Base
       return
     end
 
-    puts "PATH: #{filename}"
+    #puts "PATH: #{filename}"
 
     [upload, real_filename]
   rescue Mysql2::Error => e
@@ -110,33 +107,27 @@ class ImportScripts::EpicFixes < BulkImport::Base
     puts sql
   end
 
-  def is_missing(raw, missing_uploads_counter, uploads_counter, uploads)
+  def is_missing(raw, missing_uploads_counter, uploads)
     # check the upload we are processing form the original post is actually the upload that is missing
     # in the imported post (in case of posts with multiple images)
     regex = /(\(upload:\/\/[^)]+\))/i
-    counter = 0
     missing = false
     text = raw.dup
 
     text.gsub!(regex) do |s|
-      puts "THE COUNTER IS #{counter}"
-      puts "THE UPLOADS_COUNTER IS #{uploads_counter}"
-      puts "THE MISSING_UPLOADS COUNTER IS #{missing_uploads_counter}"
       matches = regex.match(s)
       upload = matches[1]
-      puts "THE UPLOAD IS #{upload}"
       if "("+uploads[missing_uploads_counter]+")" == upload
-        puts "Upload matches: original is #{upload} and the reported mising is #{uploads[uploads_counter]}"
+        #puts "Upload matches: original is #{upload} and the reported mising is #{uploads[uploads_counter]}"
         missing = true
+        return missing
       end
-      counter += 1
     end
 
     return missing
   end
 
-  def import_attachments_three
-
+  def import_attachments
     puts "Checking for missing uploads..."
 
     fail_count = 0
@@ -146,9 +137,11 @@ class ImportScripts::EpicFixes < BulkImport::Base
     missing_uploads = PostCustomField.where(name: Post::MISSING_UPLOADS)
 
     missing_uploads.each do |missing_upload|
-      puts "#################################################################################"
-
       post_id = missing_upload.post_id
+
+      puts "#################################################################################"
+      puts "Processing missing uploads for post #{post_id}..."
+
       uploads = JSON.parse missing_upload.value
       import_id = PostCustomField.where(name: 'import_id', post_id: post_id)
 
@@ -157,7 +150,7 @@ class ImportScripts::EpicFixes < BulkImport::Base
 
       if import_id.nil? || import_id.empty?
         fail_count += 1
-        puts "Import ID not found for #{post_id}"
+        puts "Import ID not found for post #{post_id}. Skipping."
         next
       end
 
@@ -165,16 +158,11 @@ class ImportScripts::EpicFixes < BulkImport::Base
 
       post = Post.where(id: post_id).first
 
-      puts "The post with the missing upload(s) is: #{post_id}"
-      puts "The topic is #{post.topic_id}"
-      puts "The missing uploads are: #{uploads}"
-      puts "The original post is: #{import_id}"
-
       # Check if post has been edited since last migration
       migration_end_date = "2021-05-15"
       if post.updated_at > migration_end_date.to_date
         fail_count += 1
-        puts "Post #{post_id} has been update since the migration ended"
+        puts "Post #{post_id} has been updated since the migration ended. Skipping."
         next
       end
 
@@ -188,13 +176,11 @@ class ImportScripts::EpicFixes < BulkImport::Base
 
       if original_content.first.nil?
         fail_count += 1
-        puts "Original content not found"
+        puts "Original content not found for post #{post_id}. Skipping."
         next
       end
 
       original_content = original_content.first.to_s
-
-      puts "THE ORIGINAL CONTENT IS #{original_content}"
 
       attachment_regex = /\[attach[^\]]*\].*[\\]*\"data-attachmentid[\\]*\":[\\]*"?(\d+)[\\]*"?,?.*\[\/attach\]/i
       attachment_regex_oldstyle = /\[attach[^\]]*\](\d+)\[\/attach\]/i
@@ -202,7 +188,7 @@ class ImportScripts::EpicFixes < BulkImport::Base
       # look for new style attachments
       original_content.gsub!(attachment_regex) do |s|
         if missing_uploads_counter >= uploads.length
-          puts "All missing uploads checked. Skipping the rest."
+          puts "All missing uploads checked for post #{post_id}. Skipping the rest."
           break
         end
 
@@ -211,40 +197,35 @@ class ImportScripts::EpicFixes < BulkImport::Base
         node_id = matches[1]
 
         # not all images in the original post are missing in the migrated ones
-        if is_missing(raw, missing_uploads_counter, uploads_counter, uploads)
-          puts "The upload to substitute is #{uploads[missing_uploads_counter]}"
-          
-          upload, filename = find_upload(post, { node_id: node_id })
+        if is_missing(raw, missing_uploads_counter, uploads)
+          #puts "The upload to substitute is #{uploads[missing_uploads_counter]}"
 
-          puts "UPLOAD #{upload}"
-          puts "FILENAME #{filename}"
+          missing_uploads_counter += 1
+          upload, filename = find_upload(post, { node_id: node_id })
 
           unless upload
             fail_count += 1
-            missing_uploads_counter += 1
             puts "Upload recovery for post #{post_id} failed, upload id: #{node_id}"
             puts "Original upload: #{s}"
             puts "----------------------------------------------------------------------"
             next
           end
           
-          puts "----------------------------------------------------------------------"
           html = html_for_upload(upload, filename)
-          puts "The HTML to substitute is #{html}"
           new_raw.gsub! /!\[[^\]]+\]\(#{uploads[missing_uploads_counter]}\)/, html
-          missing_uploads_counter += 1
+          puts "Upload: #{s} found for post #{post_id}"
+          puts "----------------------------------------------------------------------"
         else
-          puts "It's not a missing upload. Skipping."
+          puts "Upload: #{s} is not a missing upload. Skipping."
           puts "----------------------------------------------------------------------"
           next
         end
-
       end
 
       # look for old style attachments
       original_content.gsub!(attachment_regex_oldstyle) do |s|
         if missing_uploads_counter >= uploads.length
-          puts "All missing uploads checked. Skipping the rest."
+          puts "All missing uploads checked for post #{post_id}. Skipping the rest."
           break
         end
 
@@ -252,30 +233,27 @@ class ImportScripts::EpicFixes < BulkImport::Base
         matches = attachment_regex_oldstyle.match(s)
         attachment_id = matches[1]
 
-        if is_missing(raw, missing_uploads_counter, uploads_counter, uploads)
-          puts "The upload to substitute is #{uploads[missing_uploads_counter]}"
+        # not all images in the original post are missing in the migrated ones
+        if is_missing(raw, missing_uploads_counter, uploads)
+          #puts "The upload to substitute is #{uploads[missing_uploads_counter]}"
 
+          missing_uploads_counter += 1
           upload, filename = find_upload(post, { attachment_id: attachment_id })
-
-          puts "UPLOAD #{upload}"
-          puts "FILENAME #{filename}"
 
           unless upload
             fail_count += 1
-            missing_uploads_counter += 1
             puts "Upload recovery for post #{post_id} failed, upload id: #{attachment_id}"
             puts "Original upload: #{s}"
             puts "----------------------------------------------------------------------"
             next
           end
-
-          puts "----------------------------------------------------------------------"
+          
           html = html_for_upload(upload, filename)
-          puts "The HTML to substitute is #{html}"
           new_raw.gsub! /!\[[^\]]+\]\(#{uploads[missing_uploads_counter]}\)/, html
-          missing_uploads_counter += 1
+          puts "Upload: #{s} found for post #{post_id}"
+          puts "----------------------------------------------------------------------"
         else
-          puts "It's not a missing upload. Skipping."
+          puts "Upload: #{s} is not a missing upload. Skipping."
           puts "----------------------------------------------------------------------"
           next
         end
@@ -285,160 +263,13 @@ class ImportScripts::EpicFixes < BulkImport::Base
         post['raw'] = new_raw
         post.save(validate: false)
         PostCustomField.create(post_id: post.id, name: "upload_fixed", value: true)
+        puts "Uploads updated successfully for post #{post_id}."
         success_count += 1
       end
     end
 
     puts "", "imported #{success_count} attachments... failed: #{fail_count}"
-
   end
-
-  def import_attachments_two
-    puts '', 'importing missing attachments...'
-
-    total_count = 0
-
-    uploads = mysql_query <<-SQL
-    SELECT n.parentid nodeid, a.filename, fd.userid, LENGTH(fd.filedata) AS dbsize, filedata, fd.filedataid
-      FROM #{DB_PREFIX}attach a
-      LEFT JOIN #{DB_PREFIX}filedata fd ON fd.filedataid = a.filedataid
-      LEFT JOIN #{DB_PREFIX}node n on n.nodeid = a.nodeid
-    SQL
-
-    uploads.each do |upload|
-
-      post_id = PostCustomField.where(name: 'import_id').where(value: upload[0]).first&.post_id
-      post_id = PostCustomField.where(name: 'import_id').where(value: "thread-#{upload[0]}").first&.post_id unless post_id
-      if post_id.nil?
-        puts "Post for #{upload[0]} not found"
-        next
-      end
-      
-      missing = PostCustomField.where(post_id: post_id).where(name: Post::MISSING_UPLOADS)
-      if missing.nil? || missing.empty?
-        next
-      end
-
-      begin
-          post = Post.find(post_id)
-      rescue
-          puts "Couldn't find post #{post_id}"
-          next
-      end
-
-      filename = File.join(ATTACH_DIR, upload[2].to_s.split('').join('/'), "#{upload[5]}.attach")
-      real_filename = upload[1]
-      real_filename.prepend SecureRandom.hex if real_filename[0] == '.'
-
-      unless File.exists?(filename)
-        # attachments can be on filesystem or in database
-        # try to retrieve from database if the file did not exist on filesystem
-        if upload[3].to_i == 0
-          puts "Attachment file #{upload[5]} doesn't exist"
-          next
-        end
-
-        tmpfile = 'attach_' + upload[5].to_s
-        filename = File.join('/tmp/', tmpfile)
-        File.open(filename, 'wb') { |f|
-          f.write(upload[4])
-        }
-        return nil if filename.nil?
-      end
-
-      puts "POST ID: #{post_id}"
-      puts "PATH IN FILESYSTEM: #{filename}"
-      puts "FILENAME: #{real_filename}"
-
-      total_count += 1
-
-    end
-    puts "Total uploads porcessed succesfully: #{total_count}"
-  end
-
-  def import_attachments
-    puts '', 'importing missing attachments...'
-
-    total_count = 0
-
-    PostCustomField.where(name: Post::MISSING_UPLOADS).pluck(:post_id, :value).each do |post_id, uploads|
-      post = Post.where(id: post_id)
-      raw = post.first.raw
-      new_raw = raw.dup 
-
-      original_post_id = PostCustomField.where(name: 'import_id', post_id: post_id).first
-
-      if original_post_id.nil?
-        puts "Original post not found for #{post.first.id}"
-        next
-      end
-
-      original_post_id = original_post_id.value
-
-
-      uploads = mysql_query <<-SQL
-        SELECT n.parentid nodeid, a.filename, fd.userid, LENGTH(fd.filedata) AS dbsize, filedata, fd.filedataid
-          FROM attach a
-          LEFT JOIN filedata fd ON fd.filedataid = a.filedataid
-          LEFT JOIN node n on n.nodeid = a.nodeid
-          WHERE n.parentid = #{original_post_id}
-      SQL
-
-      upload = uploads.first
-
-      if upload.nil? || upload.empty?
-        puts "Upload for #{post.first.id} not found"
-        next
-      end
-
-      filename = File.join(ATTACH_DIR, upload[2].to_s.split('').join('/'), "#{upload[5]}.attach")
-      real_filename = upload[1]
-      real_filename.prepend SecureRandom.hex if real_filename[0] == '.'
-
-      unless File.exists?(filename)
-        # attachments can be on filesystem or in database
-        # try to retrieve from database if the file did not exist on filesystem
-        if upload[3].to_i == 0
-          puts "Attachment file #{upload[5]} doesn't exist"
-          next
-        end
-
-        tmpfile = 'attach_' + upload[5].to_s
-        filename = File.join('/tmp/', tmpfile)
-        File.open(filename, 'wb') { |f|
-          f.write(upload[4])
-        }
-        return nil if filename.nil?
-      end
-
-      puts "POST ID: #{post_id}"
-      puts "ORIGONAL POST ID: #{original_post_id}"
-      puts "PATH IN FILESYSTEM: #{filename}"
-      puts "FILENAME: #{real_filename}"
-      puts "POST CONTENT: #{uploads}"
-
-      # upl_obj = create_upload(post.user_id, filename, real_filename)
-
-      # if upl_obj&.persisted?
-      #   new_raw.gsub!(uploads) do |s|
-      #     html_for_upload(upl_obj, filename)
-      #   end
-      # else
-      #   puts "Fail"
-      #   exit
-      # end
-
-      # if new_raw != post.raw
-      #   post.raw = new_raw
-      #   post.save(validate: false)
-      # end
-
-      total_count += 1
-    end
-    puts "Total uploads porcessed succesfully: #{total_count}"
-  end
-
-
 
   def mysql_stream(sql)
     @client.query(sql, stream: true)

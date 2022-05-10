@@ -44,152 +44,13 @@ class ImportScripts::EpicFixes < BulkImport::Base
     refresh_post_raw
   end
 
-  def check_database_for_attachment(row)
-    # check if attachment resides in the database & try to retrieve
-    if row[2].to_i == 0
-      puts "Attachment file #{row.inspect} doesn't exist"
-      return nil
-    end
-
-    tmpfile = 'attach_' + row[4].to_s
-    filename = File.join('/tmp/', tmpfile)
-    File.open(filename, 'wb') { |f| f.write(row[3]) }
-    filename
-  end
-
-  def find_upload(post, opts = {})
-    if opts[:attachment_id].present?
-      sql = "SELECT a.filename, fd.userid, LENGTH(fd.filedata), filedata, fd.filedataid
-               FROM #{DB_PREFIX}attach a
-               LEFT JOIN #{DB_PREFIX}filedata fd ON fd.filedataid = a.filedataid
-               LEFT JOIN #{DB_PREFIX}node n ON n.nodeid = a.nodeid
-              WHERE a.nodeid = #{opts[:attachment_id]}"
-    elsif opts[:filedata_id].present?
-      sql = "SELECT a.filename, fd.userid, LENGTH(fd.filedata), filedata, fd.filedataid
-               FROM #{DB_PREFIX}attachment a
-               LEFT JOIN #{DB_PREFIX}filedata fd ON fd.filedataid = a.filedataid
-              WHERE a.attachmentid = #{opts[:filedata_id]}"
-    end
-
-    results = mysql_query(sql)
-
-    unless row = results.first
-      puts "Couldn't find attachment record -- nodeid/filedataid = #{opts[:attachment_id] || opts[:filedata_id]} / post.id = #{post.id}"
-      return nil
-    end
-
-    attachment_id = row[4]
-    user_id = row[1]
-    db_filename = row[0]
-
-    filename = File.join(ATTACH_DIR, user_id.to_s.split('').join('/'), "#{attachment_id}.attach")
-    real_filename = db_filename
-    real_filename.prepend SecureRandom.hex if real_filename[0] == '.'
-
-    unless File.exists?(filename)
-      filename = check_database_for_attachment(row) if filename.blank?
-      return nil if filename.nil?
-    end
-
-    upload = create_upload(post.user_id, filename, real_filename)
-
-    if upload.nil? || !upload.valid?
-      puts "Upload not valid"
-      puts upload.errors.inspect if upload
-      return
-    end
-
-    [upload, real_filename]
-  rescue Mysql2::Error => e
-    puts "SQL Error"
-    puts e.message
-    puts sql
-  end
-
-  def import_attachments post_id
-    puts '', 'importing attachments...'
-
-    RateLimiter.disable
-
-    # we need to match an older and newer style for inline attachment import
-    # new style matches the nodeid in the attach table
-    # old style matches the filedataid in attach/filedata tables
-    attachment_regex = /\[attach[^\]]*\].*\"data-attachmentid\":"?(\d+)"?,?.*\[\/attach\]/i
-    attachment_regex_oldstyle = /\[attach[^\]]*\](\d+)\[\/attach\]/i
-    attachment_regex_url = /https?:\/\/forums.unrealengine.com\/filedata\/fetch\?id=(\d+)/i
-    attachment_regex_url = /https?:\/\/forums.unrealengine.com\/attachment\.php\?attachmentid=(\d+)/i
-
-    post = Post.find(post_id)
-
-    new_raw = post.raw.dup
-
-    # look for new style attachments
-    new_raw.gsub!(attachment_regex) do |s|
-      matches = attachment_regex.match(s)
-      attachment_id = matches[1]
-
-      upload, filename = find_upload(post, { attachment_id: attachment_id })
-
-      unless upload
-        puts "Attachments import for #{post_id} failed"
-        next
-      end
-
-      html_for_upload(upload, filename)
-    end
-
-    # look for old style attachments
-    new_raw.gsub!(attachment_regex_oldstyle) do |s|
-      matches = attachment_regex_oldstyle.match(s)
-      filedata_id = matches[1]
-
-      upload, filename = find_upload(post, { filedata_id: filedata_id })
-
-      unless upload
-        puts "Attachments import for #{post_id} failed"
-        next
-      end
-
-      html_for_upload(upload, filename)
-    end
-
-    # look for URL style attachments
-    new_raw.gsub!(attachment_regex_url) do |s|
-      matches = attachment_regex_url.match(s)
-      attachment_id = matches[1]
-
-      upload, filename = find_upload(post, { attachment_id: attachment_id })
-
-      unless upload
-        puts "Attachments import for #{post_id} failed"
-        next
-      end
-
-      html_for_upload(upload, filename)
-    end
-
-    if new_raw != post.raw
-      if DRY_RUN
-        puts "The new raw (with attachments) is (DRY_RUN):"
-        puts new_raw
-      else
-        puts "The new raw (with attachments) is:"
-        puts new_raw
-        PostRevisor.new(post).revise!(post.user, { raw: new_raw }, bypass_bump: true, edit_reason: 'Post content fix: Import attachments')
-      end
-    end
-
-    puts "Attachements import successful for #{post_id}"
-    RateLimiter.enable
-  end
-
   def refresh_post_raw
     puts "Fixing posts content..."
     skipped = 0
     updated = 0
     total = 0
     
-    broken = Post.where("cooked like '%[LIST]%' or cooked like '%[LIST=1]%' or cooked like '%[/LIST]%' or cooked like '%[list]%' or cooked like '%[list=1]%' or cooked like '%[/list]%' or cooked like '%[/ol]%' or cooked like '%[/li]%' or cooked like '%[/ul]%' or cooked like '%[ol]%' or cooked like '%[li]%' or cooked like '%[ul]%'")
+    broken = Post.where("lower(cooked) like '%[list]%' or lower(cooked) like '%[list=1]%' or lower(cooked) like '%[/list]%' or lower(cooked) like '%[/ol]%' or lower(cooked) like '%[/li]%' or lower(cooked) like '%[/ul]%' or lower(cooked) like '%[ol]%' or lower(cooked) like '%[li]%' or lower(cooked) like '%[ul]%'")
 
     broken.each do |post|
       total += 1
@@ -198,6 +59,7 @@ class ImportScripts::EpicFixes < BulkImport::Base
       migration_end_date = "2021-05-15"
       if post.updated_at > migration_end_date.to_date
         puts "Post #{post.id} has been update since the migration ended. Skipping."
+        puts "--------------"
         skipped += 1
         next
       end
@@ -214,6 +76,7 @@ class ImportScripts::EpicFixes < BulkImport::Base
 
       if original_raw.nil?
         puts "Original content not found for post #{post.id}. Skipping."
+        puts "--------------"
         skipped += 1
         next
       end
@@ -225,14 +88,11 @@ class ImportScripts::EpicFixes < BulkImport::Base
       if DRY_RUN
         puts "Updated (dry-run) post: #{post.id}"
         puts new_raw
-        import_attachments post.id
         puts "--------------"
         updated += 1
       else
         PostRevisor.new(post).revise!(Discourse.system_user, { raw: new_raw }, bypass_bump: true, edit_reason: "Refresh post raw to fix parsing issues")
-        import_attachments post.id
         puts "Updated post: #{post.id}"
-        puts new_raw
         puts "--------------"
         updated += 1
       end
@@ -469,39 +329,21 @@ class ImportScripts::EpicFixes < BulkImport::Base
     # [SPOILER=Some hidden stuff]SPOILER HERE!![/SPOILER]
     raw.gsub!(/\[SPOILER="?(.+?)"?\](.+?)\[\/SPOILER\]/im) { "\n#{$1}\n[spoiler]#{$2}[/spoiler]\n" }
 
-    # convert list tags to ul and list=1 tags to ol
-    # (basically, we're only missing list=a here...)
-    # (https://meta.discourse.org/t/phpbb-3-importer-old/17397)
-    # raw.gsub!(/\[list\](.*?)\[\/list\]/i, '[ul]\1[/ul]')
-    # raw.gsub!(/\[list=1\|?[^\]]*\](.*?)\[\/list\]/i, '[ol]\1[/ol]')
-    # raw.gsub!(/\[list\](.*?)\[\/list:u\]/i, '[ul]\1[/ul]')
-    # raw.gsub!(/\[list=1\|?[^\]]*\](.*?)\[\/list:o\]/i, '[ol]\1[/ol]')
-    # convert *-tags to li-tags so bbcode-to-md can do its magic on phpBB's lists:
-    # raw.gsub!(/\[\*\]\n/, '')
-    # raw.gsub!(/\[\*\](.*?)\[\/\*:m\]/, "<li>\n\n#{$1}\n\n</li>")
-    # raw.gsub!(/\[\*\](.*?)\n/, "<li>\n\n#{$1}\n\n<li>")
-    # raw.gsub!(/\[\*=1\]/, '')
-    # raw.gsub!(/\[\*\]\n/, '')
-    # raw.gsub!(/\[\*\](.*?)\[\/\*:m\]/, '<li>\1</li>')
-    # raw.gsub!(/\[\*\](.*?)\n/, '<li>\1</li>')
-    # raw.gsub!(/\[\*=1\]/, '')
-
     # Nested lists
-    
     raw.gsub!(/\[\*\]\n/, '')
-    raw.gsub!(/\[\*\](.*?)\[\/\*:m\]/i) do
-      "<li>\n\n#{$1}\n\n</li>"
-    end
-    raw.gsub!(/\[\*\](((?!\[\*\]$|\[list\]$|\[\/list\]$).*))/i) do
+    raw.gsub!(/\[\*\](\[\*\])*(.*?)\[\/\*:m\]/i) do
       "<li>\n\n#{$2}\n\n</li>"
+    end
+    raw.gsub!(/\[\*\](\[\*\])*(((?!\[\*\]$|\[list\]$|\[\/list\]$).*))/i) do
+      "<li>\n\n#{$3}\n\n</li>"
     end
     raw.gsub!(/\[\*=1\]/, '')
 
-    raw.gsub!(/\[list\]/i, "\n\n<ul>\n\n")
-    raw.gsub!(/\[list=1\|?[^\]]*\]/i, "\n\n<ul>\n\n")
-    raw.gsub!(/\[\/list\]/i, "\n\n</ul>\n\n")
-    raw.gsub!(/\[\/list:u\]/i, "\n\n</ul>\n\n")
-    raw.gsub!(/\[\/list:o\]/i, "\n\n</ul>\n\n")
+    raw.gsub!(/(\[\*\])*\[list\]/i, "\n\n<ul>\n\n")
+    raw.gsub!(/(\[\*\])*\[list=1\|?[^\]]*\]/i, "\n\n<ul>\n\n")
+    raw.gsub!(/(\[\*\])*\[\/list\]/i, "\n\n</ul>\n\n")
+    raw.gsub!(/(\[\*\])*\[\/list:u\]/i, "\n\n</ul>\n\n")
+    raw.gsub!(/(\[\*\])*\[\/list:o\]/i, "\n\n</ul>\n\n")
 
     raw
   end
