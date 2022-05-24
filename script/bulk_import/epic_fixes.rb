@@ -8,17 +8,17 @@ class ImportScripts::EpicFixes < BulkImport::Base
 
   DB_PREFIX = ""
   SUSPENDED_TILL ||= Date.new(3000, 1, 1)
-  ATTACH_DIR ||= ENV['ATTACH_DIR'] || '/shared/import/data/import_uploads'
+  ATTACH_DIR ||= ENV['ATTACH_DIR'] || '/var/www/discourse/import_uploads/missing_images'
   ROOT_NODE = 2
-  DRY_RUN = false
+  DRY_RUN = true
 
   def initialize
     super
 
-    host     = ENV["DB_HOST"] || "localhost"
+    host     = ENV["DB_HOST"] || "172.17.0.8"
     username = ENV["DB_USERNAME"] || "root"
-    password = ENV["DB_PASSWORD"] || "root"
-    database = ENV["DB_NAME"] || "vb_web_pd04"
+    password = ENV["DB_PASSWORD"] || "mypass"
+    database = ENV["DB_NAME"] || "old_epic"
     charset  = ENV["DB_CHARSET"] || "utf8"
 
     @html_entities = HTMLEntities.new
@@ -41,7 +41,7 @@ class ImportScripts::EpicFixes < BulkImport::Base
   end
 
   def execute
-    import_attachments
+    #import_attachments
     refresh_post_raw
   end
 
