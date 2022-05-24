@@ -17,6 +17,7 @@ class BulkImport::DiscourseMerger < BulkImport::Base
   # SOURCE_BASE_URL: base url of the site being merged. e.g. https://meta.discourse.org
   # SOURCE_CDN: (optional) base url of the CDN of the site being merged.
   #             e.g. https://discourse-cdn-sjc1.com/business4
+  SITE_NAME = 'matic1'
 
   def initialize
     db_password = ENV["DB_PASS"] || 'import_password'
@@ -450,8 +451,8 @@ class BulkImport::DiscourseMerger < BulkImport::Base
         rel_filename = row['url'].gsub(/^\/uploads\/[^\/]+\//, '')
         # assumes if coming from amazonaws.com that we want to remove everything
         # but the text after the last `/`, which should leave us the filename
-        rel_filename = rel_filename.gsub(/^\/\/[^\/]+\.amazonaws\.com\/\S+\//, '')
-        absolute_filename = get_file_path(rel_filename, @uploads_path)
+        rel_filename = rel_filename.gsub(/^\/\/[^\/]+\.amazonaws\.com\/\S+uploads\/#{SITE_NAME}+\//, '')
+        absolute_filename = File.join(@uploads_path, rel_filename)
 
         old_id = row['id']
         if old_id && last_id
