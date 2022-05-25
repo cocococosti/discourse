@@ -90,6 +90,7 @@ class BulkImport::DiscourseMerger < BulkImport::Base
     copy_categories_first_child
     copy_topics
     copy_posts
+    copy_post_uploads
     copy_tags
     copy_everything_else
     copy_badges
@@ -476,7 +477,6 @@ class BulkImport::DiscourseMerger < BulkImport::Base
 
     puts ''
 
-    copy_model(PostUpload)
     copy_model(UserAvatar)
 
     # Users have a column "uploaded_avatar_id" which needs to be mapped now.
@@ -486,6 +486,10 @@ class BulkImport::DiscourseMerger < BulkImport::Base
         u.save! unless u.uploaded_avatar_id.nil?
       end
     end
+  end
+
+  def copy_post_uploads
+    copy_model(PostUpload)
   end
 
   def copy_everything_else
