@@ -75,8 +75,14 @@ class BulkImport::Base
   def initialize
     charset = ENV["DB_CHARSET"] || "utf8"
     db = ActiveRecord::Base.connection_config
+    puts "#{db[:database]}"
     @encoder = PG::TextEncoder::CopyRow.new
-    @raw_connection = PG.connect(dbname: db[:database], port: db[:port])
+    @raw_connection = PG.connect(
+      host: ENV['DISCOURSE_DB_HOST'] || 'localhost',
+      port: ENV['DISCOURSE_DB_PORT'] || 5432,
+      dbname: ENV['DISCOURSE_DB_NAME'] || 'discourse',
+      user: ENV['DISCOURSE_DB_USERNAME'] || 'discourse',
+      password: ENV['DISCOURSE_DB_PASSWORD'] || '')
     @uploader = ImportScripts::Uploader.new
     @html_entities = HTMLEntities.new
     @encoding = CHARSET_MAP[charset]

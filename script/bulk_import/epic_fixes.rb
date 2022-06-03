@@ -15,7 +15,7 @@ class ImportScripts::EpicFixes < BulkImport::Base
   def initialize
     super
 
-    host     = ENV["DB_HOST"] || "172.17.0.8"
+    host     = ENV["DB_HOST"] || "172.17.0.5"
     username = ENV["DB_USERNAME"] || "root"
     password = ENV["DB_PASSWORD"] || "mypass"
     database = ENV["DB_NAME"] || "old_epic"
@@ -536,9 +536,6 @@ class ImportScripts::EpicFixes < BulkImport::Base
     # [QUOTE=<username>;<postid>]
     raw.gsub!(/\[QUOTE=([^;\]]+);n(\d+)\]/i) do
       imported_username, imported_postid = $1, $2
-      puts imported_username
-
-      puts imported_postid
 
       username = imported_username
       post_number = post_number_from_imported_id(imported_postid)
