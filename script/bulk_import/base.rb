@@ -74,7 +74,7 @@ class BulkImport::Base
 
   def initialize
     charset = ENV["DB_CHARSET"] || "utf8"
-    db = ActiveRecord::Base.connection_config
+    db = ActiveRecord::Base.connection_db_config.configuration_hash
     puts "#{db[:database]}"
     @encoder = PG::TextEncoder::CopyRow.new
     @raw_connection = PG.connect(

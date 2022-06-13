@@ -10,12 +10,12 @@ class ImportScripts::EpicFixes < BulkImport::Base
   SUSPENDED_TILL ||= Date.new(3000, 1, 1)
   ATTACH_DIR ||= ENV['ATTACH_DIR'] || '/var/www/discourse/import_uploads/missing_images'
   ROOT_NODE = 2
-  DRY_RUN = true
+  DRY_RUN = false
 
   def initialize
     super
 
-    host     = ENV["DB_HOST"] || "172.17.0.5"
+    host     = ENV["DB_HOST"] || "172.17.0.8"
     username = ENV["DB_USERNAME"] || "root"
     password = ENV["DB_PASSWORD"] || "mypass"
     database = ENV["DB_NAME"] || "old_epic"
@@ -41,8 +41,8 @@ class ImportScripts::EpicFixes < BulkImport::Base
   end
 
   def execute
-    #import_attachments
-    refresh_post_raw
+    import_attachments
+    #refresh_post_raw
   end
 
   def check_database_for_attachment(row)
@@ -109,26 +109,6 @@ class ImportScripts::EpicFixes < BulkImport::Base
     puts sql
   end
 
-  def is_missing(raw, missing_uploads_counter, uploads)
-    # check the upload we are processing form the original post is actually the upload that is missing
-    # in the imported post (in case of posts with multiple images)
-    regex = /(\(upload:\/\/[^)]+\))/i
-    missing = false
-    text = raw.dup
-
-    text.gsub!(regex) do |s|
-      matches = regex.match(s)
-      upload = matches[1]
-      if "("+uploads[missing_uploads_counter]+")" == upload
-        #puts "Upload matches: original is #{upload} and the reported mising is #{uploads[uploads_counter]}"
-        missing = true
-        return missing
-      end
-    end
-
-    return missing
-  end
-
   def import_attachments
     puts "Checking for missing uploads..."
 
@@ -147,8 +127,7 @@ class ImportScripts::EpicFixes < BulkImport::Base
       uploads = JSON.parse missing_upload.value
       import_id = PostCustomField.where(name: 'import_id', post_id: post_id)
 
-      missing_uploads_counter = 0
-      uploads_counter = -1
+      uploads_counter = 0
 
       if import_id.nil? || import_id.empty?
         fail_count += 1
@@ -189,85 +168,63 @@ class ImportScripts::EpicFixes < BulkImport::Base
 
       # look for new style attachments
       original_content.gsub!(attachment_regex) do |s|
-        if missing_uploads_counter >= uploads.length
-          puts "All missing uploads checked for post #{post_id}. Skipping the rest."
-          break
-        end
 
-        uploads_counter += 1
         matches = attachment_regex.match(s)
         node_id = matches[1]
 
-        # not all images in the original post are missing in the migrated ones
-        if is_missing(raw, missing_uploads_counter, uploads)
-          #puts "The upload to substitute is #{uploads[missing_uploads_counter]}"
+        upload, filename = find_upload(post, { node_id: node_id })
 
-          missing_uploads_counter += 1
-          upload, filename = find_upload(post, { node_id: node_id })
-
-          unless upload
-            fail_count += 1
-            puts "Upload recovery for post #{post_id} failed, upload id: #{node_id}"
-            puts "Original upload: #{s}"
-            puts "----------------------------------------------------------------------"
-            next
-          end
-          
-          html = html_for_upload(upload, filename)
-          new_raw.gsub! /!\[[^\]]+\]\(#{uploads[missing_uploads_counter]}\)/, html
-          success_count += 1
-          puts "Upload: #{s} found for post #{post_id}"
+        unless upload
+          fail_count += 1
+          puts "Upload recovery for post #{post_id} failed, upload id: #{node_id}"
+          puts "Original upload: #{s}"
           puts "----------------------------------------------------------------------"
-        else
-          puts "Upload: #{s} is not a missing upload. Skipping."
-          puts "----------------------------------------------------------------------"
+          uploads_counter += 1
           next
         end
+        
+        html = html_for_upload(upload, filename)
+        new_raw.gsub! /!\[[^\]]+\]\(#{uploads[uploads_counter]}\)/, html
+        success_count += 1
+        puts "Upload: #{s} found for post #{post_id}"
+        puts "----------------------------------------------------------------------"
+        uploads_counter += 1
       end
 
       # look for old style attachments
       original_content.gsub!(attachment_regex_oldstyle) do |s|
-        if missing_uploads_counter >= uploads.length
-          puts "All missing uploads checked for post #{post_id}. Skipping the rest."
-          break
-        end
 
-        uploads_counter += 1
         matches = attachment_regex_oldstyle.match(s)
         attachment_id = matches[1]
 
-        # not all images in the original post are missing in the migrated ones
-        if is_missing(raw, missing_uploads_counter, uploads)
-          #puts "The upload to substitute is #{uploads[missing_uploads_counter]}"
+        upload, filename = find_upload(post, { attachment_id: attachment_id })
 
-          missing_uploads_counter += 1
-          upload, filename = find_upload(post, { attachment_id: attachment_id })
-
-          unless upload
-            fail_count += 1
-            puts "Upload recovery for post #{post_id} failed, upload id: #{attachment_id}"
-            puts "Original upload: #{s}"
-            puts "----------------------------------------------------------------------"
-            next
-          end
-          
-          html = html_for_upload(upload, filename)
-          new_raw.gsub! /!\[[^\]]+\]\(#{uploads[missing_uploads_counter]}\)/, html
-          success_count += 1
-          puts "Upload: #{s} found for post #{post_id}"
+        unless upload
+          fail_count += 1
+          puts "Upload recovery for post #{post_id} failed, upload id: #{attachment_id}"
+          puts "Original upload: #{s}"
           puts "----------------------------------------------------------------------"
-        else
-          puts "Upload: #{s} is not a missing upload. Skipping."
-          puts "----------------------------------------------------------------------"
+          uploads_counter += 1
           next
         end
+        
+        html = html_for_upload(upload, filename)
+        new_raw.gsub! /!\[[^\]]+\]\(#{uploads[uploads_counter]}\)/, html
+        success_count += 1
+        puts "Upload: #{s} found for post #{post_id}"
+        puts "----------------------------------------------------------------------"
+        uploads_counter += 1
       end
 
       if new_raw != raw
-        post['raw'] = new_raw
-        post.save(validate: false)
-        PostCustomField.create(post_id: post.id, name: "upload_fixed", value: true)
-        puts "Uploads updated successfully for post #{post_id}."
+        if DRY_RUN
+          puts new_raw
+        else
+          post['raw'] = new_raw
+          post.save(validate: false)
+          PostCustomField.create(post_id: post.id, name: "upload_fixed", value: true)
+          puts "Uploads updated successfully for post #{post_id}."
+        end
       end
     end
 
