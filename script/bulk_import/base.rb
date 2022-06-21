@@ -133,39 +133,11 @@ class BulkImport::Base
     SQL
   end
 
-  def get_posts_with_issues
-    puts "Fixing highest post numbers..."
-    @raw_connection.exec <<-SQL
-      select id from posts where cooked like '%[LIST=1]%' 
-      or cooked like '%[LIST]%'
-      or cooked like '%[/LIST]%'
-      or cooked like '%[list=1]%' 
-      or cooked like '%[list]%'
-      or cooked like '%[/list]%'
-      or cooked like '%[/ol]%' 
-      or cooked like '%[/li]%'
-      or cooked like '%[/ul]%'
-      or cooked like '%[ol]%' 
-      or cooked like '%[li]%'
-      or cooked like '%[ul]%'
-    SQL
-  end
-
   def imported_ids(name)
     map = []
     ids = []
 
-    if name == "post"
-      puts "Loading posts with list formatting issues..."
-      post_with_issues = get_posts_with_issues.to_a
-      post_with_issues.each do |post|
-        post_id = post["id"].to_i
-        PostCustomField.create!(post_id: post_id, name: "list_format_issue", value: true)
-      end
-      @raw_connection.send_query("SELECT c.value, c.post_id FROM post_custom_fields c WHERE c.name = 'import_id' and EXISTS (SELECT p.post_id FROM post_custom_fields p WHERE p.name = 'list_format_issue' AND p.post_id = c.post_id)")
-    else   
-      @raw_connection.send_query("SELECT value, #{name}_id FROM #{name}_custom_fields WHERE name = 'import_id'")
-    end
+    @raw_connection.send_query("SELECT value, #{name}_id FROM #{name}_custom_fields WHERE name = 'import_id'")
     @raw_connection.set_single_row_mode
 
     @raw_connection.get_result.stream_each do |row|

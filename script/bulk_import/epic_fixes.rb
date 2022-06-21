@@ -10,7 +10,7 @@ class ImportScripts::EpicFixes < BulkImport::Base
   SUSPENDED_TILL ||= Date.new(3000, 1, 1)
   ATTACH_DIR ||= ENV['ATTACH_DIR'] || '/var/www/discourse/import_uploads/missing_images'
   ROOT_NODE = 2
-  DRY_RUN = false
+  DRY_RUN = true
 
   def initialize
     super
@@ -41,8 +41,8 @@ class ImportScripts::EpicFixes < BulkImport::Base
   end
 
   def execute
-    import_attachments
-    #refresh_post_raw
+    #import_attachments
+    refresh_post_raw
   end
 
   def check_database_for_attachment(row)
