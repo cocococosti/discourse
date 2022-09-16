@@ -1,0 +1,253 @@
+<table_structure name="roles">
+	<field Field="name" Type="VARCHAR(255)"></field>
+	<field Field="node_id" Type="int"></field>
+</table_structure>
+
+<table_data name="roles">
+	<row>
+		<field name="name">Name of the role (group)</field>
+		<field name="node_id">1</field>
+	</row>
+</table_data>
+
+<table_structure name="users">
+	<field Field="id" Type="int"></field>
+	<field Field="email_lower" Type="VARCHAR(255)"></field>
+	<field Field="nlogin" Type="VARCHAR(255)"></field>
+	<field Field="email" Type="VARCHAR(255)"></field>
+	<field Field="registration_time" Type="DATE"></field>
+	<field Field="sso_id" Type="int"></field>
+</table_structure>
+
+<table_data name="users">
+	<row>
+		<field name="id">1</field>
+		<field name="email_lower">janedoe@example.com</field>
+		<field name="nlogin">Jane Doe</field>
+		<field name="email">JaneDoe@example.com</field>
+		<field name="registration_time">2022-01-01</field>
+		<field name="sso_id">1</field>
+	</row>
+</table_data>
+
+<table_structure name="user_profile">
+	<field Field="user_id" Type="int"></field>
+	<field Field="param" Type="VARCHAR(255)"></field>
+	<field Field="nvalue" Type="VARCHAR(255)"></field>
+</table_structure>
+
+<table_data name="user_profile">
+	<row>
+		<field name="user_id">1</field>
+		<field name="param">profile.jobtitle</field>
+		<field name="nvalue">Engineer</field>
+	</row>
+
+	<row>
+		<field name="user_id">1</field>
+		<field name="param">profile.company</field>
+		<field name="nvalue">Discourse</field>
+	</row>
+
+	<row>
+		<field name="user_id">1</field>
+		<field name="param">profile.industry</field>
+		<field name="nvalue">Tech</field>
+	</row>
+
+	<row>
+		<field name="user_id">1</field>
+		<field name="param">profile.location</field>
+		<field name="nvalue">USA</field>
+	</row>
+</table_data>
+
+<table_structure name="user_log">
+	<field Field="user_id" Type="int"></field>
+	<field Field="login_time" Type="DATETIME"></field>
+</table_structure>
+
+<table_data name="user_log">
+	<row>
+		<field name="user_id">1</field>
+		<field name="login_time">'2022-01-01 23:59:59'</field>
+	</row>
+</table_data>
+
+<table_structure name="customavatar">
+	<field Field="userid" Type="int"></field>
+	<field Field="dateline" Type="DATETIME"></field>
+	<field Field="filedata" Type="binary"></field>
+	<field Field="filename" Type="VARCHAR(255)"></field>
+</table_structure>
+
+<table_data name="customavatar">
+	<row>
+		<field name="userid">1</field>
+		<field name="dateline">"2022-01-01"</field>	
+		<field name="filedata"></field>
+		<field name="filename">'avatar.jpg'</field>
+	</row>
+</table_data>
+
+<table_structure name="customprofilepic">
+	<field Field="userid" Type="int"></field>
+	<field Field="dateline" Type="DATETIME"></field>
+	<field Field="filedata" Type="binary"></field>
+	<field Field="filename" Type="VARCHAR(255)"></field>
+</table_structure>
+
+<table_data name="customprofilepic">
+	<row>
+		<field name="userid">1</field>
+		<field name="dateline">"2022-01-01"</field>	
+		<field name="filedata"></field>
+		<field name="filename">'profilepic.jpg'</field>
+	</row>
+</table_data>
+
+<table_structure name="nodes">
+	<field Field="node_id" Type="int"></field>
+	<field Field="display_id" Type="int"></field>
+	<field Field="position" Type="int"></field>
+	<field Field="parent_node_id" Type="int"></field>
+	<field Field="type_id" Type="int"></field>
+</table_structure>
+
+<table_data name="nodes">
+	<row>
+		<field name="node_id">1</field>
+		<field name="display_id">1</field>
+		<field name="position">1</field>
+		<field name="parent_node_id">1</field>
+		<field name="type_id">1</field>
+	</row>
+</table_data>
+
+<table_structure name="settings">
+	<field Field="node_id" Type="int"></field>
+	<field Field="param" Type="VARCHAR(255)"></field>
+	<field Field="nvalue" Type="VARCHAR(255)"></field>
+</table_structure>
+
+<table_data name="settings">
+	<row>
+		<field name="node_id">1</field>
+		<field name="param">category.title</field>
+		<field name="nvalue">My Category</field>
+	</row>
+
+	<row>
+		<field name="node_id">1</field>
+		<field name="param">board.title</field>
+		<field name="nvalue">My Board</field>
+	</row>
+</table_data>
+
+<table_structure name="message2">
+	<field Field="id" Type="int"></field>
+	<field Field="subject" Type="VARCHAR(255)"></field>
+	<field Field="body" Type="text"></field>
+	<field Field="deleted" Type="bool"></field>
+	<field Field="user_id" Type="int"></field>
+	<field Field="post_date" Type="DATE"></field>
+	<field Field="views" Type="int"></field>
+	<field Field="node_id" Type="int"></field>
+	<field Field="unique_id" Type="int"></field>
+	<field Field="row_version" Type="DATETIME"></field>
+	<field Field="root_id" Type="int"></field>
+	<field Field="parent_id" Type="int"></field>
+</table_structure>
+
+<table_data name="message2">
+	<row>
+		<field name="id">1</field>
+		<field name="subject"></field>
+		<field name="body"></field>
+		<field name="deleted">0</field>
+		<field name="user_id">1</field>
+		<field name="post_date">"2022-01-01"</field>
+		<field name="views">1</field>
+		<field name="node_id">1</field>
+		<field name="unique_id">1</field>
+		<field name="row_version"></field>
+		<field name="root_id">1</field>
+		<field name="parent_id">1</field>
+	</row>
+</table_data>
+
+<table_structure name="tag_events_label_message">
+	<field Field="target_id" Type="int"></field>
+	<field Field="tag_id" Type="int"></field>
+</table_structure>
+
+<table_data name="tag_events_label_message">
+	<row>
+		<field name="target_id">1</field>
+		<field name="tag_id">1</field>
+	</row>
+</table_data>
+
+<table_structure name="tags_label">
+	<field Field="tag_text" Type="VARCHAR(255)"></field>
+	<field Field="tag_id" Type="int"></field>
+</table_structure>
+
+<table_data name="tags_label">
+	<row>
+		<field name="tag_text"></field>
+		<field name="tag_id">1</field>
+	</row>
+</table_data>
+
+<table_structure name="tag_events_score_message">
+	<field Field="source_id" Type="int">1</field>
+	<field Field="target_id" Type="int">1</field>
+	<field Field="row_version" Type="DATETIME"></field>
+</table_structure>
+
+<table_data name="tag_events_score_message">
+	<row>
+		<field name="source_id">1</field>
+		<field name="target_id">1</field>
+		<field name="row_version">"2022-01-01"</field>
+	</row>
+</table_data>
+
+<table_structure name="tblia_notes_inbox">
+	<field Field="note_id" Type="int">1</field>
+	<field Field="recipient_user_id" Type="int"></field>
+</table_structure>
+
+<table_data name="tblia_notes_inbox">
+	<row>
+		<field name="note_id">1</field>
+		<field name="recipient_user_id">1</field>
+	</row>
+</table_data>
+
+<table_structure name="tblia_notes_outbox">
+	<field Field="note_id" Type="int">1</field>
+	<field Field="recipient_id" Type="int">1</field>
+</table_structure>
+
+<table_data name="tblia_notes_outbox">
+	<row>
+		<field name="note_id">1</field>
+		<field name="recipient_id">1</field>
+	</row>
+</table_data>
+
+<table_structure name="tblia_notes_content">
+	<field Field="note_id" Type="int">1</field>
+	<field Field="subject" Type="VARCHAR(255)"></field>
+	<field Field="sender_user_id" Type="int">1</field>
+</table_structure>
+
+<table_data name="tblia_notes_content">
+	<row>
+		<field name="note_id">1</field>
+		<field name="subject"></field>
+		<field name="sender_user_id">1</field>
+	</row>
+</table_data>

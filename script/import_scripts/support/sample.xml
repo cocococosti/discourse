@@ -1,0 +1,568 @@
+<Object Type="System.Object[]">
+  <Property Type="System.Management.Automation.PSCustomObject">
+    <Property Name="kudos_received" Type="System.Object[]" />
+    <Property Name="kudos_received_Count" Type="System.Int64">0</Property>
+    <Property Name="topics" Type="System.Object[]" />
+    <Property Name="topicsCount" Type="System.Int64">0</Property>
+    <Property Name="images" Type="System.Object[]" />
+    <Property Name="imagesCount" Type="System.Int64">0</Property>
+    <Property Name="videos" Type="System.Object[]" />
+    <Property Name="videosCount" Type="System.Int64">0</Property>
+    <Property Name="following" Type="System.Object[]" />
+    <Property Name="followingCount" Type="System.Int64">0</Property>
+    <Property Name="followers" Type="System.Object[]" />
+    <Property Name="followersCount" Type="System.Int64">0</Property>
+    <Property Name="roles" Type="System.Object[]">
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">role</Property>
+        <Property Name="id" Type="System.String">t:Administrator</Property>
+        <Property Name="href" Type="System.String">/roles/t:Administrator</Property>
+        <Property Name="name" Type="System.String">Administrator</Property>
+        <Property Name="node_type" Type="System.String">community</Property>
+        <Property Name="users" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="query" Type="System.String">SELECT * FROM users WHERE roles.id = 't:Administrator'</Property>
+        </Property>
+        <Property Name="role_status" Type="System.String">active</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node</Property>
+          <Property Name="id" Type="System.String">community:ttprj38622</Property>
+          <Property Name="href" Type="System.String">/nodes/community:ttprj38622</Property>
+        </Property>
+        <Property Name="feature" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">feature</Property>
+          <Property Name="id" Type="System.String">core</Property>
+          <Property Name="enabled" Type="System.Boolean">True</Property>
+        </Property>
+      </Property>
+    </Property>
+    <Property Name="rolesCount" Type="System.Int64">1</Property>
+    <Property Name="settings" Type="System.Object[]">
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.accept_private_notes_consent_agreement</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String">false</Property>
+          <Property Name="derived" Type="System.String">false</Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String">false</Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.address1</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.address2</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.auto_subscribe_on_join</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String">true</Property>
+          <Property Name="derived" Type="System.String">true</Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String">true</Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.autosave_interval</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String">30</Property>
+          <Property Name="derived" Type="System.String">30</Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String">30</Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.avatar.coordinates.message</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.avatar.coordinates.message.pre_moderation</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.avatar.coordinates.profile</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.avatar.coordinates.profile.pre_moderation</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.badge.delivery_enable</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String">false</Property>
+          <Property Name="derived" Type="System.String">false</Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String">false</Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.badge.email_delivery_freq</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String">immediate</Property>
+          <Property Name="derived" Type="System.String">immediate</Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String">immediate</Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.biography</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.biography.last_keibi_accepted</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.birthday</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.blog_tkb_events.comments.delivery_enable</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String">false</Property>
+          <Property Name="derived" Type="System.String">false</Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String">false</Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.blogger_badge_automatic_update</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.blogger_badge_background_image_url</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.blogger_badge_has_been_set</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String"></Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.blogger_badge_orientation</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String">vertical</Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String">vertical</Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.blogger_badge_show_accepted_solutions</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String">true</Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String">true</Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.blogger_badge_show_avatar</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String">true</Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String">true</Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.blogger_badge_show_blogs</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String">true</Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String">true</Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.blogger_badge_show_ideas</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String">true</Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String">true</Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.blogger_badge_show_kudos</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String">true</Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String">true</Property>
+        </Property>
+      </Property>
+      <Property Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">setting</Property>
+        <Property Name="id" Type="System.String">profile.blogger_badge_show_post_count</Property>
+        <Property Name="node" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">node_setting</Property>
+          <Property Name="id" Type="System.String">ttprj38622</Property>
+          <Property Name="node_type" Type="System.String">community</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String">true</Property>
+        </Property>
+        <Property Name="user" Type="System.Management.Automation.PSCustomObject">
+          <Property Name="type" Type="System.String">user_setting</Property>
+          <Property Name="id" Type="System.String">1</Property>
+          <Property Name="local" Type="System.String"></Property>
+          <Property Name="derived" Type="System.String">true</Property>
+        </Property>
+      </Property>
+    </Property>
+    <Property Name="User" Type="System.Management.Automation.PSCustomObject">
+      <Property Name="type" Type="System.String">user</Property>
+      <Property Name="id" Type="System.String">1</Property>
+      <Property Name="href" Type="System.String">/users/1</Property>
+      <Property Name="view_href" Type="System.String">https://community.doctolib.com/t5/user/viewprofilepage/user-id/1</Property>
+      <Property Name="login" Type="System.String">Lithium-Admin</Property>
+      <Property Name="email" Type="System.String">admin@lithium.com</Property>
+      <Property Name="online_status" Type="System.String">offline</Property>
+      <Property Name="personal_info_privacy" Type="System.String">none</Property>
+      <Property Name="email_address_privacy" Type="System.String">none</Property>
+      <Property Name="online_status_privacy" Type="System.String">all</Property>
+      <Property Name="rank" Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">rank</Property>
+        <Property Name="id" Type="System.String">1</Property>
+        <Property Name="name" Type="System.String">Community Manager</Property>
+        <Property Name="position" Type="System.Int64">2</Property>
+        <Property Name="bold" Type="System.Boolean">True</Property>
+        <Property Name="color" Type="System.String">0596DE</Property>
+        <Property Name="icon_left" Type="System.String">/html/rank_icons/D-Rank-Icon30-2.png</Property>
+        <Property Name="icon_right" Type="System.String">/i/rank_icons/admin.gif</Property>
+        <Property Name="rank_status" Type="System.String">active</Property>
+      </Property>
+      <Property Name="avatar" Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">avatar</Property>
+        <Property Name="profile" Type="System.String">https://community.doctolib.com/t5/image/serverpage/avatar-name/environment-clouds/avatar-theme/classic/avatar-collection/environment/avatar-display-size/profile/version/2?xdesc=1.0</Property>
+        <Property Name="message" Type="System.String">https://community.doctolib.com/t5/image/serverpage/avatar-name/environment-clouds/avatar-theme/classic/avatar-collection/environment/avatar-display-size/message/version/2?xdesc=1.0</Property>
+        <Property Name="inline" Type="System.String">https://community.doctolib.com/t5/image/serverpage/avatar-name/environment-clouds/avatar-theme/classic/avatar-collection/environment/avatar-display-size/inline/version/2?xdesc=1.0</Property>
+        <Property Name="favicon" Type="System.String">https://community.doctolib.com/t5/image/serverpage/avatar-name/environment-clouds/avatar-theme/classic/avatar-collection/environment/avatar-display-size/favicon/version/2?xdesc=1.0</Property>
+        <Property Name="print" Type="System.String">https://community.doctolib.com/t5/image/serverpage/avatar-name/environment-clouds/avatar-theme/classic/avatar-collection/environment/avatar-display-size/print/version/2?xdesc=1.0</Property>
+      </Property>
+      <Property Name="kudos_received" Type="System.Management.Automation.PSCustomObject">
+        <Property Name="query" Type="System.String">SELECT * FROM kudos WHERE message.author.id = '1'</Property>
+      </Property>
+      <Property Name="kudos_given" Type="System.Management.Automation.PSCustomObject">
+        <Property Name="query" Type="System.String">SELECT * FROM kudos WHERE user.id = '1'</Property>
+      </Property>
+      <Property Name="solutions_authored" Type="System.Management.Automation.PSCustomObject">
+        <Property Name="query" Type="System.String">SELECT * FROM messages WHERE author.id = '1' AND is_solution = true</Property>
+      </Property>
+      <Property Name="topics" Type="System.Management.Automation.PSCustomObject">
+        <Property Name="query" Type="System.String">SELECT * FROM messages WHERE author.id = '1' AND depth = 0</Property>
+      </Property>
+      <Property Name="threads_participated" Type="System.Management.Automation.PSCustomObject">
+        <Property Name="query" Type="System.String">SELECT * FROM messages WHERE participants.id = '1' AND depth = 0</Property>
+      </Property>
+      <Property Name="images" Type="System.Management.Automation.PSCustomObject">
+        <Property Name="query" Type="System.String">SELECT * FROM images WHERE owner.id = '1'</Property>
+      </Property>
+      <Property Name="public_images" Type="System.Management.Automation.PSCustomObject">
+        <Property Name="query" Type="System.String">SELECT * FROM images WHERE owner.id = '1' AND album.privacy_level = 'public' AND visibility = 'public'</Property>
+      </Property>
+      <Property Name="albums" Type="System.Management.Automation.PSCustomObject">
+        <Property Name="query" Type="System.String">SELECT * FROM albums WHERE owner.id = '1'</Property>
+      </Property>
+      <Property Name="videos" Type="System.Management.Automation.PSCustomObject">
+        <Property Name="query" Type="System.String">SELECT * FROM videos WHERE owner.id = '1'</Property>
+      </Property>
+      <Property Name="user_badges" Type="System.Management.Automation.PSCustomObject">
+        <Property Name="list_item_type" Type="System.String">user_badge</Property>
+        <Property Name="size" Type="System.Int64">0</Property>
+        <Property Name="items" Type="System.Object[]" />
+      </Property>
+      <Property Name="following" Type="System.Management.Automation.PSCustomObject">
+        <Property Name="query" Type="System.String">SELECT * FROM users WHERE followers.id = '1'</Property>
+      </Property>
+      <Property Name="followers" Type="System.Management.Automation.PSCustomObject">
+        <Property Name="query" Type="System.String">SELECT * FROM users WHERE following.id = '1'</Property>
+      </Property>
+      <Property Name="language" Type="System.String"></Property>
+      <Property Name="metrics" Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">user_metrics</Property>
+      </Property>
+      <Property Name="settings" Type="System.Management.Automation.PSCustomObject">
+        <Property Name="query" Type="System.String">SELECT * FROM settings WHERE user.id = '1'</Property>
+      </Property>
+      <Property Name="registration_data" Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">registration_data</Property>
+        <Property Name="registration_time" Type="System.DateTime">04/11/2019 16:03:57</Property>
+        <Property Name="status" Type="System.String">fully-registered</Property>
+        <Property Name="registration_access_level" Type="System.String">all</Property>
+        <Property Name="confirm_email_status" Type="System.Boolean">False</Property>
+        <Property Name="sso_registration_fields" Type="System.Object[]" />
+      </Property>
+      <Property Name="mailbox" Type="System.Management.Automation.PSCustomObject">
+        <Property Name="type" Type="System.String">mailbox</Property>
+      </Property>
+      <Property Name="deleted" Type="System.Boolean">False</Property>
+      <Property Name="roles" Type="System.Management.Automation.PSCustomObject">
+        <Property Name="query" Type="System.String">SELECT * FROM roles WHERE users.id = '1'</Property>
+      </Property>
+      <Property Name="messages" Type="System.Management.Automation.PSCustomObject">
+        <Property Name="query" Type="System.String">SELECT * FROM messages WHERE author.id = '1'</Property>
+      </Property>
+      <Property Name="reviews" Type="System.Management.Automation.PSCustomObject">
+        <Property Name="query" Type="System.String">SELECT * FROM reviews WHERE author.id = '1'</Property>
+      </Property>
+      <Property Name="last_visit_time" Type="System.DateTime">04/11/2019 16:03:57</Property>
+      <Property Name="date_pattern" Type="System.String">dd-MM-yyyy</Property>
+      <Property Name="friendly_date_enabled" Type="System.Boolean">True</Property>
+      <Property Name="friendly_date_max_age" Type="System.Int64">31</Property>
+    </Property>
+  </Property>
+</Object>

@@ -1,0 +1,11 @@
+<table_structure name="MyTable">
+	<field Field="field1" Type="int"></field>
+	<field Field="field2" Type="int"></field>
+</table_structure>
+
+<table_data name="MyTable">
+	<row>
+		<field name="field1">1</field>
+		<field name="field2">2</field>
+	</row>
+</table_data>
