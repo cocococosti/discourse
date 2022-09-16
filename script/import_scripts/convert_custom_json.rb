@@ -136,7 +136,7 @@ class ImportScripts::JsonGeneric < ImportScripts::Base
       end
     end
     categories.uniq!
-    
+
     create_categories(categories) do |category|
       {
         id: category['id'],
