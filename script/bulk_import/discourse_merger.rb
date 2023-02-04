@@ -34,9 +34,10 @@ class BulkImport::DiscourseMerger < BulkImport::Base
       password: db_password,
     }
 
-    raise "SOURCE_BASE_URL missing!" unless ENV["SOURCE_BASE_URL"]
-
     @source_base_url = ENV["SOURCE_BASE_URL"]
+
+    raise "SOURCE_BASE_URL missing!" unless @source_base_url
+
     @uploads_path = ENV["UPLOADS_PATH"]
     @uploader = ImportScripts::Uploader.new
 
@@ -83,13 +84,17 @@ class BulkImport::DiscourseMerger < BulkImport::Base
     @first_new_topic_id = @last_topic_id + 1
 
     copy_users
+    copy_uploads if @uploads_path
     copy_user_stuff
+    copy_search_data
     copy_groups
-    copy_categories
+    copy_categories_with_no_parent
+    copy_categories_first_child
     copy_topics
     copy_posts
+    copy_post_uploads
     copy_tags
-    copy_uploads if @uploads_path
+
     copy_everything_else
     copy_badges
 
@@ -147,9 +152,7 @@ class BulkImport::DiscourseMerger < BulkImport::Base
     create_custom_fields("user", "id", imported_ids) do |old_user_id|
       { value: old_user_id, record_id: user_id_from_imported_id(old_user_id) }
     end
-  end
 
-  def copy_user_stuff
     copy_model(
       EmailToken,
       skip_if_merged: true,
@@ -158,19 +161,27 @@ class BulkImport::DiscourseMerger < BulkImport::Base
       mapping: @email_tokens,
     )
 
-    [
-      UserEmail,
-      UserStat,
-      UserOption,
-      UserProfile,
-      UserVisit,
-      UserSearchData,
-      GivenDailyLike,
-      UserSecondFactor,
-    ].each { |c| copy_model(c, skip_if_merged: true, is_a_user_model: true, skip_processing: true) }
+    copy_model(UserEmail, skip_if_merged: true, is_a_user_model: true, skip_processing: true)
+  end
+
+  def copy_user_stuff
+    [UserStat, UserOption, UserProfile, UserVisit, GivenDailyLike, UserSecondFactor].each do |c|
+      copy_model(c, skip_if_merged: true, is_a_user_model: true, skip_processing: true)
+    end
 
     [UserAssociatedAccount, Oauth2UserInfo, SingleSignOnRecord, EmailChangeRequest].each do |c|
       copy_model(c, skip_if_merged: true, is_a_user_model: true)
+    end
+  end
+
+  def copy_search_data
+    [UserSearchData].each do |c|
+      copy_model_user_search_data(
+        c,
+        skip_if_merged: true,
+        is_a_user_model: true,
+        skip_processing: true,
+      )
     end
   end
 
@@ -186,7 +197,17 @@ class BulkImport::DiscourseMerger < BulkImport::Base
     copy_model(GroupUser, skip_if_merged: true)
   end
 
-  def copy_categories
+  def category_exisits(cat_row)
+    # Categories with the same name/slug and parent are merged
+
+    parent = category_id_from_imported_id(cat_row["parent_category_id"])
+    existing = Category.where(slug: cat_row["slug"]).or(Category.where(name: cat_row["name"])).first
+
+    existing.id if existing && parent == existing&.parent_category_id
+  end
+
+  def copy_categories_with_no_parent
+    # Categories with no parent are copied first so child categories can reference the parent
     puts "merging categories..."
 
     columns = Category.columns.map(&:name)
@@ -197,36 +218,22 @@ class BulkImport::DiscourseMerger < BulkImport::Base
     @raw_connection.copy_data(sql, @encoder) do
       source_raw_connection
         .exec(
-          "SELECT concat('/c/', x.parent_slug, '/', x.slug) as path,
-                  #{columns.map { |c| "c.\"#{c}\"" }.join(", ")}
-             FROM categories c
-       INNER JOIN (
-              SELECT c1.id AS id,
-                     c2.slug AS parent_slug,
-                     c1.slug AS slug
-                FROM categories c1
-     LEFT OUTER JOIN categories c2 ON c1.parent_category_id = c2.id
-                  ) x ON c.id = x.id
-            ORDER BY c.id",
+          "SELECT #{columns.map { |c| "c.\"#{c}\"" }.join(", ")}
+             FROM categories c 
+             WHERE parent_category_id IS NULL",
         )
         .each do |row|
-          # using ORDER BY id to import categories in order of creation.
-          # this assumes parent categories were created prior to child categories
-          # and have a lower category id.
-          #
-          # without this definition, categories import in different orders in subsequent imports
-          # and can potentially mess up parent/child structure
+          # If a category with the same slug or name, and the same parent, exists
+          existing_category = category_exisits(row)
 
-          source_category_path = row.delete("path")&.squeeze("/")
-
-          existing = Category.where(slug: row["slug"]).first
-          parent_slug = existing&.parent_category&.slug
-          if existing && source_category_path == "/c/#{parent_slug}/#{existing.slug}".squeeze("/")
-            @categories[row["id"].to_i] = existing.id
+          if existing_category
+            @categories[row["id"].to_i] = existing_category
             next
-          elsif existing
-            # if not the exact path as the source,
-            # we still need to avoid a unique index conflict on the slug when importing
+          end
+
+          existing_slug = Category.where(slug: row["slug"]).first
+          if existing_slug
+            # We still need to avoid a unique index conflict on the slug when importing
             # if that's the case, we'll append the imported id
             row["slug"] = "#{row["slug"]}-#{row["id"]}"
           end
@@ -234,9 +241,66 @@ class BulkImport::DiscourseMerger < BulkImport::Base
           old_user_id = row["user_id"].to_i
           row["user_id"] = user_id_from_imported_id(old_user_id) || -1 if old_user_id >= 1
 
-          if row["parent_category_id"]
-            row["parent_category_id"] = category_id_from_imported_id(row["parent_category_id"])
+          row["reviewable_by_group_id"] = group_id_from_imported_id(
+            row["reviewable_by_group_id"],
+          ) if row["reviewable_by_group_id"]
+
+          old_id = row["id"].to_i
+          row["id"] = (last_id += 1)
+          imported_ids << old_id
+          @categories[old_id] = row["id"]
+
+          @raw_connection.put_copy_data(row.values)
+        end
+    end
+
+    @sequences[Category.sequence_name] = last_id + 1
+
+    create_custom_fields("category", "id", imported_ids) do |imported_id|
+      { record_id: category_id_from_imported_id(imported_id), value: imported_id }
+    end
+  end
+
+  def copy_categories_first_child
+    # Only for categories with one parent, no granparent
+    puts "merging categories..."
+
+    columns = Category.columns.map(&:name)
+    imported_ids = []
+    last_id = Category.unscoped.maximum(:id) || 1
+
+    sql = "COPY categories (#{columns.map { |c| "\"#{c}\"" }.join(", ")}) FROM STDIN"
+    @raw_connection.copy_data(sql, @encoder) do
+      source_raw_connection
+        .exec(
+          "SELECT #{columns.map { |c| "c.\"#{c}\"" }.join(", ")}
+             FROM categories c
+             WHERE parent_category_id IS NOT NULL",
+        )
+        .each do |row|
+          # If a category with the same slug or name, and the same parent, exists
+          existing_category = category_exisits(row)
+
+          if existing_category
+            @categories[row["id"].to_i] = existing_category
+            next
           end
+
+          existing_slug = Category.where(slug: row["slug"]).first
+          if existing_slug
+            # We still need to avoid a unique index conflict on the slug when importing
+            # if that's the case, we'll append the imported id
+            row["slug"] = "#{row["slug"]}-#{row["id"]}"
+          end
+
+          old_user_id = row["user_id"].to_i
+          row["user_id"] = user_id_from_imported_id(old_user_id) || -1 if old_user_id >= 1
+
+          row["parent_category_id"] = category_id_from_imported_id(row["parent_category_id"])
+
+          row["reviewable_by_group_id"] = group_id_from_imported_id(
+            row["reviewable_by_group_id"],
+          ) if row["reviewable_by_group_id"]
 
           old_id = row["id"].to_i
           row["id"] = (last_id += 1)
@@ -257,7 +321,8 @@ class BulkImport::DiscourseMerger < BulkImport::Base
   def fix_category_descriptions
     puts "updating category description topic ids..."
 
-    @categories.each do |old_id, new_id|
+    @categories.each do |new_id|
+      next if !CategoryCustomField.where(category_id: new_id, name: "import_id").exists?
       category = Category.find(new_id) if new_id.present?
       if description_topic_id = topic_id_from_imported_id(category&.topic_id)
         category.topic_id = description_topic_id
@@ -353,7 +418,7 @@ class BulkImport::DiscourseMerger < BulkImport::Base
           rel_filename = row["url"].gsub(%r{^/uploads/[^/]+/}, "")
           # assumes if coming from amazonaws.com that we want to remove everything
           # but the text after the last `/`, which should leave us the filename
-          rel_filename = rel_filename.gsub(%r{^//[^/]+\.amazonaws\.com/\S+/}, "")
+          rel_filename = rel_filename.gsub(%r{^//[^/]+\.amazonaws\.com/\S+uploads/[^/]+/}, "")
           absolute_filename = File.join(@uploads_path, rel_filename)
 
           old_id = row["id"]
@@ -390,6 +455,10 @@ class BulkImport::DiscourseMerger < BulkImport::Base
           u.save! unless u.uploaded_avatar_id.nil?
         end
       end
+  end
+
+  def copy_post_uploads
+    copy_model(PostUpload)
   end
 
   def copy_everything_else
@@ -477,6 +546,11 @@ class BulkImport::DiscourseMerger < BulkImport::Base
             if is_a_user_model
               next if old_user_id < 1
               next if user_id_from_imported_id(old_user_id).nil?
+              # We import non primary emails as long as they are not already in use as primary
+              if klass.table_name == "user_emails" && row["primary"] == "f" &&
+                   UserEmail.where(email: row["email"]).first
+                next
+              end
             end
 
             if old_user_id >= 1
@@ -505,10 +579,19 @@ class BulkImport::DiscourseMerger < BulkImport::Base
             "tag_group_id"
           ]
           row["upload_id"] = upload_id_from_imported_id(row["upload_id"]) if row["upload_id"]
+          row["profile_background_upload_id"] = upload_id_from_imported_id(
+            row["profile_background_upload_id"],
+          ) if row["profile_background_upload_id"]
+          row["card_background_upload_id"] = upload_id_from_imported_id(
+            row["card_background_upload_id"],
+          ) if row["card_background_upload_id"]
           row["deleted_by_id"] = user_id_from_imported_id(row["deleted_by_id"]) if row[
             "deleted_by_id"
           ]
           row["badge_id"] = badge_id_from_imported_id(row["badge_id"]) if row["badge_id"]
+          row["granted_title_badge_id"] = badge_id_from_imported_id(
+            row["granted_title_badge_id"],
+          ) if row["granted_title_badge_id"]
 
           old_id = row["id"].to_i
           if old_id && last_id
@@ -533,6 +616,63 @@ class BulkImport::DiscourseMerger < BulkImport::Base
 
             @raw_connection.put_copy_data columns.map { |c| processed[c] } if processed
           end
+        end
+    end
+
+    @sequences[klass.sequence_name] = last_id + 1 if last_id
+
+    if has_custom_fields
+      id_mapping_method_name = "#{klass.name.downcase}_id_from_imported_id".freeze
+      return unless respond_to?(id_mapping_method_name)
+      create_custom_fields(klass.name.downcase, "id", imported_ids) do |imported_id|
+        { record_id: send(id_mapping_method_name, imported_id), value: imported_id }
+      end
+    end
+  end
+
+  def copy_model_user_search_data(
+    klass,
+    skip_if_merged: false,
+    is_a_user_model: false,
+    skip_processing: false,
+    mapping: nil,
+    select_sql: nil
+  )
+    puts "copying #{klass.table_name}..."
+
+    columns = klass.columns.map(&:name)
+    has_custom_fields = CUSTOM_FIELDS.include?(klass.name.downcase)
+    imported_ids = []
+    last_id = columns.include?("id") ? (klass.unscoped.maximum(:id) || 1) : nil
+    sql = "COPY #{klass.table_name} (#{columns.map { |c| "\"#{c}\"" }.join(", ")}) FROM STDIN"
+    @raw_connection.copy_data(sql, @encoder) do
+      source_raw_connection
+        .exec(
+          select_sql ||
+            "SELECT #{columns.map { |c| "\"#{c}\"" }.join(", ")} FROM #{klass.table_name}",
+        )
+        .each do |row|
+          if row["user_id"]
+            old_user_id = row["user_id"].to_i
+
+            next if skip_if_merged && @merged_user_ids.include?(old_user_id)
+
+            if is_a_user_model
+              next if old_user_id < 1
+              next if user_id_from_imported_id(old_user_id).nil?
+            end
+
+            if old_user_id >= 1
+              row["user_id"] = user_id_from_imported_id(old_user_id)
+              if is_a_user_model && row["user_id"].nil?
+                raise "user_id nil for user id '#{old_user_id}'"
+              end
+              next if row["user_id"].nil? # associated record for a deleted user
+            end
+          end
+
+          exists = UserSearchData.where(user_id: row["user_id"])
+          @raw_connection.put_copy_data(row.values) if exists.nil? || exists.empty?
         end
     end
 
